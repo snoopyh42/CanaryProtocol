@@ -1,8 +1,15 @@
 # 🧠 Smart Canary Protocol
 
-**An Adaptive Political & Economic Monitoring System**
+**An Adaptive Political & Economic Monitoring System with Interactive TUI**
 
 A sophisticated early warning system that uses artificial intelligence and machine learning to monitor political and economic conditions, helping assess stability and potential risks. The system **learns and improves over time** through user feedback and pattern recognition.
+
+### ✨ **New Features**
+- **🖥️ Interactive Terminal UI**: Navigate all functions through an intuitive menu system
+- **🔧 Database Migrations**: Version-controlled schema management
+- **📦 Data Archival**: Automated cleanup and archival of historical data
+- **✅ Backup Verification**: Integrity checking for all system backups
+- **📚 Production Documentation**: Complete deployment and troubleshooting guides
 
 ## 🎯 Purpose
 
@@ -25,7 +32,18 @@ cd CanaryProtocol
 ./canary setup
 ```
 
-### **2. Daily Usage**
+### **2. Interactive Interface**
+```bash
+# Launch interactive TUI menu (default)
+./canary
+
+# Or explicitly launch TUI
+./canary tui
+./canary menu
+./canary interactive
+```
+
+### **3. Command Line Usage**
 ```bash
 # Check learning progress and recent activity
 ./canary dashboard
@@ -35,9 +53,18 @@ cd CanaryProtocol
 
 # Get system status overview
 ./canary status
+
+# Test system functionality
+./canary test
+
+# Create system backup
+./canary backup
+
+# Emergency analysis
+./canary emergency
 ```
 
-### **3. Improve the System**
+### **4. Improve the System**
 ```bash
 # Provide feedback to train the AI (choose your preferred method)
 ./canary feedback            # Rate entire digest summary (quick)
@@ -195,7 +222,9 @@ config/
 ├── config.yaml              # Your custom settings
 ├── config_defaults.yaml     # System defaults (fallback)
 ├── config_example.yaml      # Example configuration
-└── .env                     # API keys and secrets
+├── .env                     # API keys and secrets
+├── env_example.txt          # Environment variables template
+└── subscribers.txt.example  # Email subscriber list template
 ```
 
 **Pro Tip:** Copy `config_example.yaml` to `config.yaml` and customize to your preferences!
@@ -238,8 +267,8 @@ CanaryProtocol/
 ## ⚙️ Configuration
 
 ### **Required Setup**
-1. **Environment Variables**: Copy `config/.env.example` to `config/.env` and configure:
-   - `OPENAI_API_KEY` - OpenAI API key for AI analysis
+1. **Environment Variables**: Copy `config/env_example.txt` to `config/.env` and configure:
+   - `OPENAI_API_KEY` - OpenAI API key for AI analysis (uses modern v1.0+ API)
    - `GMAIL_USER` - Gmail address for sending digests
    - `GMAIL_APP_PASSWORD` - Gmail app password
 
@@ -334,12 +363,17 @@ CanaryProtocol/
 # Test system without sending emails
 ./canary test
 
+# Launch interactive menu for guided operations
+./canary
+
 # Verify configuration
 python3 core/canary_protocol.py --test --verbose
 ```
 
 ### **Getting Help**
 - Check `docs/SMART_CANARY_GUIDE.md` for detailed feature documentation
+- Review `docs/DEPLOYMENT_GUIDE.md` for production setup
+- Check `docs/TROUBLESHOOTING_RUNBOOK.md` for operational procedures
 - Review log files in `logs/` for specific error messages
 - Ensure all configuration files are properly set up in `config/`
 

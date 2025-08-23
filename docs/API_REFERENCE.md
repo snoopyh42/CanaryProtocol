@@ -2,13 +2,23 @@
 
 ## Core Modules
 
+### CanaryTUI (`core/canary_tui.py`) ⭐ **NEW**
+Interactive Terminal User Interface for system management.
+
+**Key Features:**
+- `CanaryTUI.run()` - Main interactive menu system
+- `execute_command()` - Command execution with proper terminal handling
+- `show_help()` - Built-in help system
+- Navigation with arrow keys, vim-style keys, and shortcuts
+
 ### CanaryProtocol (`core/canary_protocol.py`)
 Main analysis engine with adaptive intelligence integration.
 
 **Key Functions:**
-- `analyze_current_situation()` - Performs comprehensive analysis
-- `generate_digest()` - Creates intelligent summaries
-- `emergency_assessment()` - Rapid threat evaluation
+- `main()` - Primary entry point with argument parsing
+- `fetch_news()` - Multi-source news aggregation
+- `fetch_economic_data()` - Economic indicator collection
+- `assess_urgency()` - Urgency scoring with AI fallback
 
 ### AdaptiveIntelligence (`core/adaptive_intelligence.py`)
 Machine learning and pattern recognition system with enhanced individual article integration.
@@ -26,6 +36,35 @@ Machine learning and pattern recognition system with enhanced individual article
 - `_get_individual_article_pattern_boost()` - Article pattern priority in predictions
 - `_headline_matches_pattern()` - Structural headline pattern matching
 
+### Production Management Modules ⭐ **NEW**
+
+#### DatabaseMigrations (`core/database_migrations.py`)
+Version-controlled database schema management.
+
+**Key Functions:**
+- `apply_migrations()` - Apply pending schema changes
+- `rollback_migration()` - Revert specific migration
+- `get_migration_status()` - Check applied migrations
+- CLI interface for migration management
+
+#### DataArchival (`core/data_archival.py`)
+Automated data lifecycle management and cleanup.
+
+**Key Functions:**
+- `archive_old_data()` - Archive data based on retention policies
+- `restore_from_archive()` - Emergency data restoration
+- `cleanup_old_data()` - Remove archived data from database
+- `generate_archival_report()` - Archival statistics and reporting
+
+#### BackupVerification (`core/backup_verification.py`)
+Backup integrity testing and validation.
+
+**Key Functions:**
+- `verify_backup_integrity()` - SHA256 checksum validation
+- `test_backup_restoration()` - Restore to temporary database
+- `validate_backup_schema()` - Schema consistency checks
+- `generate_verification_report()` - Detailed verification results
+
 ### SmartFeedback (`core/smart_feedback.py`)
 User feedback integration and learning system for digest-level feedback.
 
@@ -34,13 +73,13 @@ User feedback integration and learning system for digest-level feedback.
 - `report_false_positive(content)` - False alarm reporting
 - `update_learning_models()` - Apply feedback to ML models
 
-### IndividualFeedback (`core/individual_feedback.py`) ⭐ **NEW**
+### Individual Article Feedback System
 Enhanced user feedback system for individual article training with 2x AI learning weight.
 
-**Key Functions:**
-- `collect_individual_feedback()` - Interactive article-by-article feedback collection
-- `get_feedback_summary()` - Summary of individual article ratings and patterns
-- `clear_all_feedback()` - Database cleanup and management
+**Available via canary command:**
+- `./canary articles` - Interactive article-by-article feedback collection
+- `./canary feedback-summary` - Summary of individual article ratings and patterns
+- `./canary feedback-clear` - Database cleanup and management
 
 ### Enhanced AI Training Integration ⭐ **NEW**
 - **Individual Article Learning**: 2x weight vs digest feedback for targeted pattern recognition
@@ -191,8 +230,9 @@ Unified database containing all system data:
 
 ## API Integration
 
-### OpenAI GPT-4o
-- Enhanced analysis engine
+### OpenAI API (v1.0+)
+- Modern OpenAI client integration
+- GPT-4o model for enhanced analysis
 - Natural language processing
 - Urgency assessment
 - Context understanding

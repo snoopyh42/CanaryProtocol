@@ -17,7 +17,7 @@ The Justice Department's investigation into state election processes expanded to
 
 Federal courts blocked implementation of Executive Order 14821 regarding sanctuary city funding, with three circuit courts issuing preliminary injunctions. The **[ruling affects $2.1 billion](https://example.com/funding)** in federal grants to 23 municipalities.
 """,
-        
+
         "bad": """
 ## 🏛️ POLITICAL & INSTITUTIONAL STABILITY
 
@@ -28,7 +28,7 @@ The government might shut down which would be catastrophic. Courts are blocking 
 This reminds me of what happened in other countries before they had civil wars. We should all be very concerned about where this is heading.
 """
     },
-    
+
     "safety_assessment": {
         "good": """
 **LGBTQ+ Persons:** 🟠 MIXED (68 words)
@@ -37,7 +37,7 @@ The **[Tennessee legislature's SB-301](https://example.com/tn-law)** restricting
 **Political Progressives:** 🟢 SAFE (71 words)
 No significant targeting or persecution documented this week. **[FBI hate crime data](https://example.com/fbi-data)** shows politically motivated violence decreased 12% year-over-year. Progressive advocacy groups report normal operation levels across all states. Campaign finance restrictions in **[Texas HB-1847](https://example.com/tx-finance)** apply equally to all political organizations. Social media harassment remains at baseline levels per platform reporting.
 """,
-        
+
         "bad": """
 **LGBTQ+ Persons:** 🔴 UNSAFE
 Everything is terrible for LGBTQ+ people. Laws are being passed everywhere to hurt them. It's getting worse every day and they should probably leave the country.
@@ -46,7 +46,7 @@ Everything is terrible for LGBTQ+ people. Laws are being passed everywhere to hu
 Conservatives are coming after progressives and it's really dangerous. They're trying to silence everyone who disagrees with them. Democracy is dying.
 """
     },
-    
+
     "economic_indicators": {
         "good": """
 ## 📊 ECONOMIC STABILITY INDICATORS (142 words)
@@ -59,7 +59,7 @@ Consumer Price Index data released Wednesday showed **[core inflation at 4.1%](h
 
 Dollar strength index (DXY) gained 1.8% against major currencies, suggesting continued safe-haven demand despite domestic economic concerns.
 """,
-        
+
         "bad": """
 ## 📊 ECONOMIC STABILITY INDICATORS
 
@@ -70,22 +70,24 @@ The dollar is either too strong or too weak, nobody knows. Everything costs too 
     }
 }
 
+
 def show_examples():
     """Display good vs bad analysis examples"""
     print("📊 CANARY PROTOCOL ANALYSIS QUALITY EXAMPLES")
     print("=" * 60)
-    
+
     for category, examples in ANALYSIS_EXAMPLES.items():
         print(f"\n{category.upper().replace('_', ' ')}")
         print("-" * 40)
-        
+
         print("\n✅ GOOD EXAMPLE:")
         print(examples["good"])
-        
+
         print("\n❌ BAD EXAMPLE:")
         print(examples["bad"])
-        
-        print("\n" + "="*60)
+
+        print("\n" + "=" * 60)
+
 
 QUALITY_GUIDELINES = """
 📝 ANALYSIS QUALITY GUIDELINES
@@ -119,14 +121,14 @@ QUALITY_GUIDELINES = """
 
 if __name__ == "__main__":
     import sys
-    
+
     if len(sys.argv) > 1:
         choice = sys.argv[1]
     else:
         choice = input("Show: (1) Examples, (2) Guidelines, (3) Both: ")
-    
+
     if choice in ["1", "3"]:
         show_examples()
-    
+
     if choice in ["2", "3"]:
         print(QUALITY_GUIDELINES)

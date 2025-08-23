@@ -39,14 +39,56 @@ cd CanaryProtocol
 
 ### **3. Improve the System**
 ```bash
-# Provide feedback on digest accuracy (after receiving weekly email)
-./canary feedback
+# Provide feedback to train the AI (choose your preferred method)
+./canary feedback            # Rate entire digest summary (quick)
+./canary articles            # Rate individual articles (detailed training)
+
+# View feedback summaries and learning progress
+./canary feedback-summary
+
+# Clear feedback data to start fresh
+./canary feedback-clear
 
 # Run emergency analysis if needed
 ./canary emergency
 ```
 
 ## 🔧 Command Interface
+
+All system functionality is available through the `./canary` command:
+
+### **🚀 Setup & Management**
+```bash
+./canary setup      # Complete system setup
+./canary dashboard  # View learning progress
+./canary status     # System status overview
+./canary config     # Configuration management  
+./canary backup     # Backup all data
+./canary logs       # View recent system logs
+./canary cron-reset # Reset cron jobs (fix duplicates)
+```
+
+### **🧪 Analysis & Testing**
+```bash
+./canary test       # Run in test mode
+./canary emergency  # Emergency analysis
+```
+
+### **📝 User Feedback & Learning**
+```bash
+./canary feedback            # Rate digest summaries (quick)
+./canary articles            # Rate individual articles (detailed)
+./canary feedback-individual # Rate individual articles (full name)
+./canary feedback-summary   # View all feedback summaries
+./canary feedback-clear     # Clear feedback data
+```
+
+### **⚙️ Configuration**
+```bash
+./canary config show      # View current settings
+./canary config create    # Create example config file  
+./canary config validate  # Test configuration loading
+```
 
 The `./canary` script provides easy access to all system functions:
 
@@ -95,9 +137,39 @@ The `./canary` script provides easy access to all system functions:
 - **Emergency Detection**: Automatic triggers for urgent situations requiring immediate analysis
 
 ### **User Feedback Integration**
-- **Accuracy Rating**: Rate digest predictions to improve future analysis
+- **Individual Article Rating** ⭐ **HIGH PRIORITY AI TRAINING**: Detailed feedback on specific headlines and sources with 2x learning weight
+- **Digest-Level Rating**: Quick overall assessment of daily digest accuracy
+- **Irrelevant Article Tracking**: AI learns noise patterns from articles you skip/mark irrelevant
 - **False Positive Reporting**: Help system learn what to ignore
 - **Missed Signal Reporting**: Improve detection of important events
+- **Source Reliability Learning**: AI learns which news sources are most/least reliable by content type
+
+### **🚀 Enhanced AI Learning (NEW!)**
+- **Headline Pattern Recognition**: AI learns which headline structures correlate with actual urgency
+- **Keyword Effectiveness**: Tracks which words in headlines indicate real vs false urgency  
+- **Source-Content Correlation**: Learns reliability patterns specific to content types and topics
+- **False Positive Reduction**: Uses irrelevant markings to filter noise and improve signal quality
+- **Higher Weight Individual Training**: Article-level feedback gets 2x priority vs digest feedback
+
+## 🎯 Understanding Urgency Ratings
+
+The system uses a **0-10 urgency scale** for rating political and economic developments:
+
+### **📊 Urgency Scale Guide**
+- **0-1**: Minimal urgency (routine political noise)
+- **2-3**: Low urgency (noteworthy but not concerning)  
+- **4-5**: Moderate urgency (significant developments requiring attention)
+- **6-7**: High urgency (serious developments affecting preparation timeline)
+- **8-9**: Critical urgency (immediate threats requiring action acceleration)
+- **10**: Maximum urgency (existential threats requiring emergency action)
+
+### **🧠 Training Methods**
+- **Targeted Article Training** ⭐ **RECOMMENDED**: Rate individual articles to train AI on specific patterns, sources, and headline structures (2x learning weight)
+- **Quick Digest Training**: Rate entire digest summaries for overall accuracy assessment
+- **Irrelevant Pattern Learning**: Mark irrelevant articles to help AI filter noise and reduce false positives
+- **Best Results**: Use individual article rating for 2-3 weeks, then switch to quick digest rating
+
+*See [`docs/SMART_CANARY_GUIDE.md`](docs/SMART_CANARY_GUIDE.md) for detailed urgency rating examples and best practices.*
 
 ## ⚙️ Configuration System
 
@@ -187,16 +259,37 @@ CanaryProtocol/
 - **Month 2+**: High accuracy predictions (80%+ with regular feedback)
 
 ### **How to Help It Learn**
-1. **Provide Regular Feedback**: Rate weekly digests for accuracy
-2. **Report False Positives**: Help system learn what to ignore
-3. **Flag Missed Signals**: Improve detection of important events
-4. **Be Specific**: Detailed feedback comments improve learning quality
+1. **Choose Your Training Method**:
+   - **Individual Article Rating** (`./canary articles`): Best for initial training - rate specific headlines and sources
+   - **Digest Rating** (`./canary feedback`): Quick overall assessment once AI is trained
+   
+2. **Provide Regular Feedback**: Rate 5-10 articles per session or weekly digests consistently
+
+3. **Be Accurate with Ratings**: Use the 0-10 urgency scale consistently (see urgency guide above)
+
+4. **Report Issues**: Flag false positives and missed signals to improve accuracy
+
+5. **Add Comments**: Specific feedback helps AI learn faster than ratings alone
+
+### **Training Strategy**
+- **Weeks 1-3**: Use `./canary articles` to train on individual headlines (best initial training)
+- **Month 2+**: Switch to `./canary feedback` for quick digest ratings (maintenance mode)
+- **Anytime**: Use `./canary feedback-clear` to reset and start fresh training
 
 ### **Monitoring Progress**
 ```bash
-./canary dashboard  # View learning statistics and progress
-./canary status     # Quick system health check
-./canary logs       # Recent activity and execution logs
+./canary dashboard        # View learning statistics and progress
+./canary feedback-summary # Detailed feedback analysis by source
+./canary status          # Quick system health check
+./canary logs            # Recent activity and execution logs
+```
+
+### **Feedback Management**
+```bash
+./canary articles         # Rate individual articles (best training)
+./canary feedback         # Rate digest summaries (quick assessment)  
+./canary feedback-summary # View learning progress by news source
+./canary feedback-clear   # Reset all feedback data to start fresh
 ```
 
 ## 🔒 Privacy & Security

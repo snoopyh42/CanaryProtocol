@@ -71,9 +71,48 @@ class FeedbackSystem:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
+        # Check if feedback already exists for this digest
+        cursor.execute('''
+            SELECT id, user_rated_urgency, feedback_type, comments, feedback_date
+            FROM user_feedback 
+            WHERE digest_date = ?
+        ''', (digest_date,))
+        
+        existing_feedback = cursor.fetchone()
+        if existing_feedback:
+            print(f"✅ You have already provided feedback for {digest_date}!")
+            print(f"🎯 Your Rating: {existing_feedback[1]}/10")
+            print(f"📝 Feedback Type: {existing_feedback[2]}")
+            if existing_feedback[3]:
+                print(f"💬 Your Comment: {existing_feedback[3]}")
+            print(f"📅 Provided: {existing_feedback[4]}")
+            print()
+            
+            # Ask if they want to see the digest again
+            show_digest = input("🔍 Would you like to see the digest summary again? (y/n): ").lower().strip()
+            if show_digest == 'y':
+                cursor.execute('''
+                    SELECT urgency_score, summary 
+                    FROM weekly_digests 
+                    WHERE date LIKE ? 
+                    ORDER BY date DESC LIMIT 1
+                ''', (f'{digest_date}%',))
+                
+                result = cursor.fetchone()
+                if result:
+                    predicted_urgency, summary = result
+                    print(f"\n🤖 AI Predicted Urgency: {predicted_urgency}/10")
+                    print(f"📄 Digest Summary:")
+                    print("=" * 80)
+                    print(summary)
+                    print("=" * 80)
+            
+            conn.close()
+            return
+        
         cursor.execute('''
             SELECT urgency_score, summary 
-            FROM digests 
+            FROM weekly_digests 
             WHERE date LIKE ? 
             ORDER BY date DESC LIMIT 1
         ''', (f'{digest_date}%',))
@@ -81,12 +120,16 @@ class FeedbackSystem:
         result = cursor.fetchone()
         if not result:
             print("❌ No digest found for that date")
+            conn.close()
             return
         
         predicted_urgency, summary = result
         
         print(f"🤖 AI Predicted Urgency: {predicted_urgency}/10")
-        print(f"📄 Summary: {summary[:200]}...")
+        print(f"📄 Full Digest Summary:")
+        print("=" * 80)
+        print(summary)
+        print("=" * 80)
         print()
         
         # Collect user feedback
@@ -245,22 +288,64 @@ class FeedbackSystem:
 
 📊 Overall Performance:
 - Prediction Accuracy: {avg_accuracy:.1%}
-- Total Feedback Sessions: {feedback_count}
+- Total Feedback Entries: {feedback_count}
 - Recent Accurate Predictions: {recent_feedback.get('accurate', 0)}
 - Recent Inaccurate Predictions: {recent_feedback.get('inaccurate', 0)}
 
-🔍 Error Analysis:
+🔍 Error Tracking:
 - False Positives Reported: {false_positive_count}
 - Missed Signals Reported: {missed_signal_count}
 
-📈 Learning Status:
-{'🟢 IMPROVING' if avg_accuracy > 0.7 else '🟡 LEARNING' if avg_accuracy > 0.5 else '🔴 NEEDS ATTENTION'}
-
-💡 Recommendation:
-{'Continue current approach - accuracy is high!' if avg_accuracy > 0.8 else 
- 'Provide more feedback to improve accuracy' if feedback_count < 10 else
- 'Review false positives and missed signals for pattern improvements'}
+📈 Learning Status: {'🟢 ACTIVE' if feedback_count > 0 else '🟡 WAITING FOR FEEDBACK'}
 """
+    
+    def clear_all_feedback(self, confirm=False):
+        """Clear all digest-level feedback from the database"""
+        if not confirm:
+            print("⚠️  This will delete ALL digest-level feedback data!")
+            print("This includes user_feedback, false_positives, missed_signals, and prediction_tracking")
+            print("This action cannot be undone.")
+            response = input("Are you sure you want to continue? (type 'YES' to confirm): ")
+            if response != 'YES':
+                print("❌ Operation cancelled")
+                return False
+        
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Get counts before deletion
+        tables_to_clear = ['user_feedback', 'false_positives', 'missed_signals', 'prediction_tracking']
+        total_count = 0
+        
+        for table in tables_to_clear:
+            try:
+                cursor.execute(f'SELECT COUNT(*) FROM {table}')
+                count = cursor.fetchone()[0]
+                total_count += count
+                print(f"  📊 {table}: {count} entries")
+            except:
+                print(f"  ❓ {table}: Table not found")
+        
+        if total_count == 0:
+            print("📊 No digest-level feedback to clear")
+            conn.close()
+            return True
+        
+        print(f"\n🗑️  Total entries to delete: {total_count}")
+        
+        # Delete from all feedback tables
+        for table in tables_to_clear:
+            try:
+                cursor.execute(f'DELETE FROM {table}')
+                print(f"  ✅ Cleared {table}")
+            except Exception as e:
+                print(f"  ⚠️  Could not clear {table}: {e}")
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"\n✅ Cleared all digest-level feedback data")
+        return True
 
 def main():
     parser = argparse.ArgumentParser(description='Canary Protocol Feedback System')
@@ -269,12 +354,15 @@ def main():
     parser.add_argument('--missed-signal', type=str, help='Report missed important event')
     parser.add_argument('--summary', action='store_true', help='Show feedback summary')
     parser.add_argument('--date', type=str, help='Specific date for feedback (YYYY-MM-DD)')
+    parser.add_argument('--clear', action='store_true', help='Clear all digest-level feedback')
     
     args = parser.parse_args()
     
     feedback_system = FeedbackSystem()
     
-    if args.feedback:
+    if args.clear:
+        feedback_system.clear_all_feedback()
+    elif args.feedback:
         feedback_system.collect_feedback(args.date)
     elif args.false_positive:
         reason = input("Why was this a false positive? ")
@@ -285,7 +373,8 @@ def main():
     elif args.summary:
         print(feedback_system.get_feedback_summary())
     else:
-        print("Use --help to see available options")
+        # Default to collecting feedback
+        feedback_system.collect_feedback(args.date)
 
 if __name__ == "__main__":
     main()

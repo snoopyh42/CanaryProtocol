@@ -16,8 +16,88 @@ case "$1" in
         scripts/learning_dashboard.sh
         ;;
     "feedback")
-        echo "📝 Starting feedback collection..."
-        python3 core/smart_feedback.py --feedback
+        echo "📝 Starting Smart Canary Protocol feedback..."
+        python3 core/smart_feedback.py
+        ;;
+    "feedback-individual"|"articles")
+        echo "📰 Starting individual article feedback..."
+        python3 core/individual_feedback.py
+        ;;
+    "feedback-summary")
+        echo "📊 Feedback Summary:"
+        echo "==================="
+        echo ""
+        echo "📝 Digest-level feedback:"
+        python3 core/smart_feedback.py --summary
+        echo ""
+        echo "📰 Individual article feedback:"
+        python3 core/individual_feedback.py --summary
+        ;;
+    "feedback-clear")
+        echo "🗑️  Clear Feedback Data"
+        echo "======================="
+        echo ""
+        echo "Choose what to clear:"
+        echo "1) Digest-level feedback only"
+        echo "2) Individual article feedback only" 
+        echo "3) ALL feedback data"
+        echo "4) Cancel"
+        echo ""
+        read -p "Enter choice (1-4): " choice
+        
+        case $choice in
+            1)
+                echo "Clearing digest-level feedback..."
+                python3 core/smart_feedback.py --clear
+                ;;
+            2)
+                echo "Clearing individual article feedback..."
+                python3 core/individual_feedback.py --clear
+                ;;
+            3)
+                echo "Clearing ALL feedback data..."
+                python3 core/smart_feedback.py --clear
+                echo ""
+                python3 core/individual_feedback.py --clear
+                ;;
+            4)
+                echo "❌ Operation cancelled"
+                ;;
+            *)
+                echo "❌ Invalid choice"
+                ;;
+        esac
+        ;;
+    "help"|"--help"|"-h"|"")
+        echo "🧠 Smart Canary Protocol - Command Interface"
+        echo "============================================="
+        echo ""
+        echo "Available commands:"
+        echo ""
+        echo "🚀 Setup & Management:"
+        echo "  ./canary setup      - Complete system setup"
+        echo "  ./canary dashboard  - View learning progress"
+        echo "  ./canary status     - System status overview"
+        echo "  ./canary config     - Configuration management"
+        echo "  ./canary backup     - Backup all data"
+        echo "  ./canary logs       - View recent system logs"
+        echo "  ./canary cron-reset - Reset cron jobs (fix duplicates)"
+        echo ""
+        echo "🧪 Analysis & Testing:"
+        echo "  ./canary test       - Run in test mode"
+        echo "  ./canary emergency  - Emergency analysis"
+        echo ""
+        echo "📝 User Interaction:"
+        echo "  ./canary feedback            - Provide digest-level feedback"
+        echo "  ./canary feedback-individual - Rate individual articles"
+        echo "  ./canary articles           - Rate individual articles (alias)"
+        echo "  ./canary feedback-summary   - View all feedback summaries"
+        echo ""
+        echo "📖 Examples:"
+        echo "  ./canary config show     - View current settings"
+        echo "  ./canary test           - Test system functionality"
+        echo "  ./canary status         - Check system health"
+        echo ""
         ;;
     "emergency")
         echo "🚨 Running emergency analysis..."
@@ -172,7 +252,10 @@ print(f'Urgency threshold: {config.get(\"system.urgent_analysis_score\")}')
         echo "  ./canary emergency  - Emergency analysis"
         echo ""
         echo "📝 User Interaction:"
-        echo "  ./canary feedback   - Provide learning feedback"
+        echo "  ./canary feedback            - Provide digest-level feedback"
+        echo "  ./canary feedback-individual - Rate individual articles"
+        echo "  ./canary articles           - Rate individual articles (alias)"
+        echo "  ./canary feedback-summary   - View all feedback summaries"
         echo ""
         echo "📖 Examples:"
         echo "  ./canary config show     - View current settings"

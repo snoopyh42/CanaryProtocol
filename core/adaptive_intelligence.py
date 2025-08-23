@@ -92,6 +92,201 @@ class CanaryIntelligence:
         conn.commit()
         conn.close()
     
+    def learn_from_individual_articles(self, digest_date=None):
+        """Learn from individual article feedback - HIGHER PRIORITY than digest feedback"""
+        if not digest_date:
+            digest_date = datetime.now().strftime('%Y-%m-%d')
+        
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Get individual article feedback for this digest
+        cursor.execute('''
+            SELECT article_title, article_source, user_urgency_rating, 
+                   ai_overall_urgency, feedback_type, comments, article_url
+            FROM individual_article_feedback 
+            WHERE digest_date = ? AND user_urgency_rating != -1
+        ''', (digest_date,))
+        
+        article_feedback = cursor.fetchall()
+        
+        if not article_feedback:
+            conn.close()
+            return
+        
+        print(f"🧠 Learning from {len(article_feedback)} individual article ratings...")
+        
+        for title, source, user_rating, ai_rating, feedback_type, comments, url in article_feedback:
+            self._process_article_feedback(title, source, user_rating, ai_rating, 
+                                           feedback_type, comments, cursor)
+        
+        # Also learn from irrelevant articles (marked as -1)
+        cursor.execute('''
+            SELECT article_title, article_source, article_url
+            FROM individual_article_feedback 
+            WHERE digest_date = ? AND user_urgency_rating = -1
+        ''', (digest_date,))
+        
+        irrelevant_articles = cursor.fetchall()
+        
+        if irrelevant_articles:
+            print(f"🧠 Learning irrelevant patterns from {len(irrelevant_articles)} articles...")
+            for title, source, url in irrelevant_articles:
+                self._process_irrelevant_article(title, source, cursor)
+        
+        conn.commit()
+        conn.close()
+        
+        print("✅ Individual article learning complete!")
+    
+    def _process_article_feedback(self, title, source, user_rating, ai_rating, feedback_type, comments, cursor):
+        """Process individual article feedback with 2x weight vs digest feedback"""
+        ARTICLE_WEIGHT_MULTIPLIER = 2.0  # Higher weight for article-specific feedback
+        
+        # Extract and weight keywords from headline
+        keywords = self._extract_keywords_from_headline(title)
+        for keyword in keywords:
+            # Update keyword performance with higher weight
+            correlation = (user_rating / 10.0) * ARTICLE_WEIGHT_MULTIPLIER
+            
+            cursor.execute('''
+                INSERT OR REPLACE INTO keyword_performance 
+                (keyword, urgency_correlation, last_seen)
+                VALUES (?, ?, ?)
+                ON CONFLICT(keyword) DO UPDATE SET
+                urgency_correlation = (urgency_correlation + ?) / 2,
+                last_seen = ?
+            ''', (keyword, correlation, datetime.now().isoformat(), 
+                  correlation, datetime.now().isoformat()))
+        
+        # Update source reliability at article level
+        domain = self._extract_domain_from_source(source)
+        if domain:
+            # Calculate accuracy: how well did this source's content match user expectation
+            source_accuracy = 1.0 - abs(user_rating - ai_rating) / 10.0
+            source_accuracy *= ARTICLE_WEIGHT_MULTIPLIER  # Higher weight
+            
+            cursor.execute('''
+                INSERT OR REPLACE INTO source_reliability 
+                (source_domain, total_articles, verified_accurate, accuracy_score)
+                VALUES (?, 1, ?, ?)
+                ON CONFLICT(source_domain) DO UPDATE SET
+                total_articles = total_articles + 1,
+                verified_accurate = verified_accurate + ?,
+                accuracy_score = (CAST(verified_accurate AS REAL) / total_articles)
+            ''', (domain, source_accuracy, source_accuracy, source_accuracy))
+        
+        # Store headline patterns with high confidence
+        if user_rating >= 7 or user_rating <= 2:  # Clear urgent or non-urgent
+            pattern_data = {
+                'headline_structure': self._analyze_headline_structure(title),
+                'keywords': keywords,
+                'source': domain,
+                'user_rating': user_rating,
+                'pattern_source': 'individual_article'
+            }
+            
+            effectiveness = (user_rating / 10.0) * ARTICLE_WEIGHT_MULTIPLIER
+            confidence = 0.9  # High confidence for individual article feedback
+            
+            cursor.execute('''
+                INSERT INTO learning_patterns 
+                (pattern_type, pattern_data, effectiveness_score, confidence_level, last_updated)
+                VALUES (?, ?, ?, ?, ?)
+            ''', ('headline_pattern', json.dumps(pattern_data), effectiveness, 
+                  confidence, datetime.now().isoformat()))
+    
+    def _process_irrelevant_article(self, title, source, cursor):
+        """Learn from articles marked as irrelevant - important for noise reduction"""
+        keywords = self._extract_keywords_from_headline(title)
+        domain = self._extract_domain_from_source(source)
+        
+        # Store as negative pattern - helps reduce false positives
+        pattern_data = {
+            'headline_structure': self._analyze_headline_structure(title),
+            'keywords': keywords,
+            'source': domain,
+            'pattern_source': 'irrelevant_article'
+        }
+        
+        cursor.execute('''
+            INSERT INTO learning_patterns 
+            (pattern_type, pattern_data, effectiveness_score, confidence_level, last_updated)
+            VALUES (?, ?, ?, ?, ?)
+        ''', ('irrelevant_pattern', json.dumps(pattern_data), 0.0, 0.8, 
+              datetime.now().isoformat()))
+        
+        # Reduce correlation for keywords found in irrelevant articles
+        for keyword in keywords:
+            cursor.execute('''
+                UPDATE keyword_performance 
+                SET urgency_correlation = urgency_correlation * 0.9
+                WHERE keyword = ?
+            ''', (keyword,))
+    
+    def _extract_keywords_from_headline(self, headline):
+        """Extract keywords from individual headline - more targeted than digest keywords"""
+        if not headline:
+            return []
+        
+        # Political/economic keywords relevant to headlines
+        important_terms = [
+            'supreme court', 'federal reserve', 'inflation', 'unemployment', 'recession',
+            'voting rights', 'constitution', 'emergency', 'crisis', 'protest', 'violence',
+            'market crash', 'martial law', 'shutdown', 'investigation', 'scandal',
+            'impeach', 'resign', 'arrest', 'fraud', 'corruption', 'breach', 'hack',
+            'attack', 'threat', 'warning', 'alert', 'surge', 'spike', 'collapse',
+            'ban', 'block', 'sanction', 'tariff', 'trade war', 'nuclear', 'military'
+        ]
+        
+        headline_lower = headline.lower()
+        found_keywords = []
+        
+        for term in important_terms:
+            if term in headline_lower:
+                found_keywords.append(term)
+        
+        # Also extract action words and intensity indicators
+        action_words = ['breaks', 'announces', 'reveals', 'exposes', 'condemns', 'approves', 'rejects']
+        for word in action_words:
+            if word in headline_lower:
+                found_keywords.append(word)
+        
+        return found_keywords
+    
+    def _analyze_headline_structure(self, headline):
+        """Analyze structural patterns in headlines that correlate with urgency"""
+        if not headline:
+            return {}
+        
+        structure = {
+            'length': len(headline),
+            'has_caps': any(c.isupper() for c in headline),
+            'has_numbers': any(c.isdigit() for c in headline),
+            'has_quotes': '"' in headline or "'" in headline,
+            'has_colon': ':' in headline,
+            'starts_with_caps': headline and headline[0].isupper(),
+            'word_count': len(headline.split())
+        }
+        
+        # Urgency indicators
+        urgency_indicators = ['BREAKING', 'URGENT', 'ALERT', '!!!', 'LIVE', 'UPDATE']
+        structure['urgency_indicators'] = sum(1 for indicator in urgency_indicators if indicator in headline.upper())
+        
+        return structure
+    
+    def _extract_domain_from_source(self, source):
+        """Extract domain from source string"""
+        if not source:
+            return None
+        
+        # Handle different source formats
+        if 'http' in source:
+            return self._extract_domain(source)
+        else:
+            # Source might be just the name like "Fox News", "NPR", etc.
+            return source.lower().replace(' ', '_')
+    
     def _update_source_reliability(self, digest_data, cursor):
         """Track reliability and bias of news sources"""
         sources = digest_data.get('sources', [])
@@ -175,27 +370,111 @@ class CanaryIntelligence:
         return high_impact_keywords
     
     def predict_trend_urgency(self, headlines, economic_data):
-        """Enhanced urgency prediction using learned patterns"""
+        """Enhanced urgency prediction using learned patterns - prioritizes individual article feedback"""
         base_urgency = self._calculate_base_urgency(headlines, economic_data)
         
-        # Apply learned keyword weights
+        # Apply learned keyword weights (prioritize article-level learning)
         learned_weights = self.get_adaptive_urgency_weights()
         headline_text = ' '.join([h.get('title', '') for h in headlines]).lower()
         
         urgency_boost = 0
-        for keyword, weight in learned_weights.items():
-            if keyword in headline_text:
-                urgency_boost += weight * 0.1  # Scale the boost
+        article_pattern_boost = 0
         
-        # Historical pattern matching
-        pattern_boost = self._get_pattern_match_boost(headlines, economic_data)
+        # Process each headline individually for more targeted analysis
+        for headline in headlines:
+            title = headline.get('title', '').lower()
+            
+            # Check for individual article patterns (higher priority)
+            article_boost = self._get_individual_article_pattern_boost(title)
+            article_pattern_boost += article_boost
+            
+            # Apply keyword weights
+            for keyword, weight in learned_weights.items():
+                if keyword in title:
+                    urgency_boost += weight * 0.1  # Scale the boost
         
-        final_urgency = min(10, base_urgency + urgency_boost + pattern_boost)
+        # Historical digest-level pattern matching (lower priority)
+        digest_pattern_boost = self._get_pattern_match_boost(headlines, economic_data)
+        
+        # Combine with individual article patterns having 2x weight
+        final_urgency = min(10, base_urgency + urgency_boost + (article_pattern_boost * 2.0) + digest_pattern_boost)
         
         # Store prediction for later accuracy tracking
         self._store_prediction(final_urgency, headlines, economic_data)
         
         return int(final_urgency), self._get_urgency_level(final_urgency)
+    
+    def _get_individual_article_pattern_boost(self, headline_text):
+        """Get urgency boost based on individual article patterns - HIGH PRIORITY"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Look for headline patterns from individual article feedback
+        cursor.execute('''
+            SELECT pattern_data, effectiveness_score, confidence_level
+            FROM learning_patterns 
+            WHERE pattern_type = 'headline_pattern' AND confidence_level > 0.8
+            ORDER BY effectiveness_score DESC
+        ''', )
+        
+        patterns = cursor.fetchall()
+        
+        # Also check for irrelevant patterns to reduce false positives
+        cursor.execute('''
+            SELECT pattern_data 
+            FROM learning_patterns 
+            WHERE pattern_type = 'irrelevant_pattern' AND confidence_level > 0.7
+        ''')
+        
+        irrelevant_patterns = cursor.fetchall()
+        conn.close()
+        
+        boost = 0
+        
+        # Check against irrelevant patterns first (reduce false positives)
+        for pattern_data, in irrelevant_patterns:
+            try:
+                pattern = json.loads(pattern_data)
+                if self._headline_matches_pattern(headline_text, pattern):
+                    boost -= 1.0  # Reduce urgency for patterns marked as irrelevant
+            except:
+                continue
+        
+        # Check against urgent patterns
+        for pattern_data, effectiveness, confidence in patterns:
+            try:
+                pattern = json.loads(pattern_data)
+                if self._headline_matches_pattern(headline_text, pattern):
+                    boost += effectiveness * confidence
+            except:
+                continue
+        
+        return max(-2.0, min(boost, 3.0))  # Cap the boost/reduction
+    
+    def _headline_matches_pattern(self, headline_text, pattern):
+        """Check if headline matches stored pattern from individual article feedback"""
+        keywords = pattern.get('keywords', [])
+        headline_structure = pattern.get('headline_structure', {})
+        
+        # Keyword matching
+        keyword_matches = sum(1 for keyword in keywords if keyword in headline_text)
+        keyword_score = keyword_matches / max(len(keywords), 1) if keywords else 0
+        
+        # Structure matching (length, caps, etc.)
+        structure_score = 0
+        if headline_structure:
+            current_structure = self._analyze_headline_structure(headline_text)
+            
+            # Compare key structural elements
+            if abs(current_structure.get('word_count', 0) - headline_structure.get('word_count', 0)) <= 3:
+                structure_score += 0.2
+            if current_structure.get('has_caps') == headline_structure.get('has_caps'):
+                structure_score += 0.2
+            if current_structure.get('urgency_indicators', 0) > 0 and headline_structure.get('urgency_indicators', 0) > 0:
+                structure_score += 0.4
+        
+        # Pattern matches if keyword similarity > 60% or structure + some keywords match
+        return keyword_score > 0.6 or (keyword_score > 0.3 and structure_score > 0.4)
     
     def _calculate_base_urgency(self, headlines, economic_data):
         """Calculate base urgency using existing logic"""

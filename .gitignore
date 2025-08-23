@@ -3,6 +3,7 @@
 # Sensitive Configuration Files
 config/.env
 config/subscribers.txt
+config/config.yaml
 
 # Database Files (contains personal data)
 data/*.db

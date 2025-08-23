@@ -31,6 +31,33 @@ case "$1" in
         echo "💾 Creating system backup..."
         scripts/backup_system.sh
         ;;
+    "logs")
+        echo "📋 Smart Canary Protocol - Recent Logs"
+        echo "======================================"
+        echo ""
+        echo "🔍 Recent Error Log (last 10 entries):"
+        if [ -f logs/error.log ]; then
+            tail -n 10 logs/error.log | sed 's/^/  /'
+        else
+            echo "  No error log found"
+        fi
+        echo ""
+        echo "📈 Recent Cron Activity (last 10 entries):"
+        if [ -f logs/canary_cron.log ]; then
+            tail -n 10 logs/canary_cron.log | sed 's/^/  /'
+        else
+            echo "  No cron log found"
+        fi
+        echo ""
+        echo "🧠 Recent Analysis Log (last 5 entries):"
+        if [ -f logs/analysis.log ]; then
+            tail -n 5 logs/analysis.log | sed 's/^/  /'
+        else
+            echo "  No analysis log found"
+        fi
+        echo ""
+        echo "💡 Tip: Use 'tail -f logs/[filename].log' to watch logs in real-time"
+        ;;
     "cron-reset")
         echo "🔄 Resetting cron jobs (removing duplicates)..."
         # Remove all canary cron jobs first
@@ -137,6 +164,7 @@ print(f'Urgency threshold: {config.get(\"system.urgent_analysis_score\")}')
         echo "  ./canary status     - System status overview"
         echo "  ./canary config     - Configuration management"
         echo "  ./canary backup     - Backup all data"
+        echo "  ./canary logs       - View recent system logs"
         echo "  ./canary cron-reset - Reset cron jobs (fix duplicates)"
         echo ""
         echo "🧪 Analysis & Testing:"

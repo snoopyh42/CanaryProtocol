@@ -55,19 +55,23 @@ The `./canary` script provides easy access to all system functions:
 ./canary setup      # Complete system setup and configuration
 ./canary status     # System overview and health check
 ./canary backup     # Backup all learning data and logs
+./canary config     # Configuration management (show/create/validate)
+./canary cron-reset # Reset cron jobs (fix duplicates)
 ```
 
 ### **📊 Monitoring & Analysis**
 ```bash
 ./canary dashboard  # View learning progress and intelligence reports
-./canary logs       # View recent system activity from log files
 ./canary test       # Run system in test mode (no emails sent)
+./canary emergency  # Run immediate emergency analysis
 ```
 
-### **🚨 Emergency & Feedback**
+### **📝 User Interaction & Configuration**
 ```bash
-./canary emergency  # Run immediate emergency analysis
 ./canary feedback   # Provide feedback to improve system accuracy
+./canary config show     # View current configuration settings
+./canary config create   # Create example configuration file
+./canary config validate # Test configuration loading
 ```
 
 ### **ℹ️ Help & Information**

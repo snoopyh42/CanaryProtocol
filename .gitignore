@@ -9,6 +9,9 @@ config/config.yaml
 data/*.db
 data/*.sqlite
 data/*.sqlite3
+data/backups/
+data/archives/
+data/verification/
 
 # Log Files (may contain sensitive information)
 logs/*.log
@@ -51,6 +54,8 @@ backups/
 learning_backups/
 *.backup
 *.bak
+*.tar.gz
+*.json.gz
 
 # Temporary Files
 *.tmp
@@ -76,6 +81,25 @@ Thumbs.db
 
 # Archive/Cleanup Folders
 archive_cleanup/
+
+# Migration Files (keep examples, ignore auto-generated)
+migrations/*.json
+!migrations/*_example.json
+
+# Verification Reports
+data/verification/*.json
+verification_report_*.json
+archival_report_*.json
+
+# Production Files
+*.pid
+*.lock
+systemd/
+
+# Monitoring and Health Check Output
+health_check_*.log
+performance_*.log
+diagnostic_*.log
 
 # Test Output
 test_output/
@@ -106,4 +130,20 @@ coverage.xml
 # mypy
 .mypy_cache/
 .dmypy.json
-dmypy.json
+dmyp.json
+
+# Production Deployment
+*.service
+*.timer
+/etc/
+
+# SSL/TLS Certificates
+*.pem
+*.crt
+*.key
+*.csr
+
+# Compressed Archives
+*.zip
+*.7z
+*.rar

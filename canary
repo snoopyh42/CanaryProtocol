@@ -1,0 +1,160 @@
+#!/bin/bash
+
+# Canary Protocol - Main Command Interface
+# Provides easy access to all system functions
+
+SCRIPT_DIR="/home/ahansen/CanaryProtocol"
+cd "$SCRIPT_DIR"
+
+case "$1" in
+    "setup")
+        echo "🚀 Running complete system setup..."
+        scripts/setup_complete_smart_system.sh
+        ;;
+    "dashboard")
+        echo "🧠 Loading learning dashboard..."
+        scripts/learning_dashboard.sh
+        ;;
+    "feedback")
+        echo "📝 Starting feedback collection..."
+        python3 core/smart_feedback.py --feedback
+        ;;
+    "emergency")
+        echo "🚨 Running emergency analysis..."
+        scripts/emergency_analysis.sh
+        ;;
+    "test")
+        echo "🧪 Running test mode..."
+        python3 core/canary_protocol.py --test --verbose
+        ;;
+    "backup")
+        echo "💾 Creating system backup..."
+        scripts/backup_system.sh
+        ;;
+    "cron-reset")
+        echo "🔄 Resetting cron jobs (removing duplicates)..."
+        # Remove all canary cron jobs first
+        crontab -l | grep -v canary_protocol | crontab -
+        # Add back the single correct one
+        (crontab -l 2>/dev/null; echo "0 8 * * * cd /home/ahansen/CanaryProtocol && python3 core/canary_protocol.py >> logs/canary_cron.log 2>&1") | crontab -
+        echo "✅ Cron jobs reset successfully"
+        ;;
+    "status")
+        echo "📊 Smart Canary Protocol - System Status"
+        echo "========================================"
+        echo ""
+        echo "🔧 System Health:"
+        echo "  Database: $([ -f data/canary_protocol.db ] && echo "✅ Active" || echo "❌ Missing")"
+        echo "  Config: $([ -f config/config.yaml ] && echo "✅ Found" || echo "❌ Missing")"
+        echo "  Logs: $([ -d logs ] && echo "✅ Directory exists" || echo "❌ Missing")"
+        echo "  Learning: $([ -f data/feedback_log.txt ] && echo "✅ Active" || echo "📝 No feedback yet")"
+        echo ""
+        echo "📈 Recent Activity:"
+        echo "  Last analysis: $([ -f logs/analysis.log ] && tail -n 1 logs/analysis.log | cut -d' ' -f1-2 || echo "No analysis run yet")"
+        echo "  Last cron run: $([ -f logs/canary_cron.log ] && tail -n 1 logs/canary_cron.log | grep "Analysis completed" | cut -d' ' -f1-2 | tail -n 1 || echo "No cron runs yet")"
+        echo "  Database entries: $([ -f data/canary_protocol.db ] && sqlite3 data/canary_protocol.db "SELECT COUNT(*) FROM news_analysis;" 2>/dev/null || echo "0")"
+        echo "  Learning entries: $([ -f data/feedback_log.txt ] && wc -l < data/feedback_log.txt || echo "0")"
+        echo ""
+        echo "📁 Storage Usage:"
+        echo "  Total data: $(du -sh data/ 2>/dev/null | cut -f1 || echo "No data directory")"
+        echo "  Total logs: $(du -sh logs/ 2>/dev/null | cut -f1 || echo "No logs directory")"
+        echo "⚙️  Config files: $(ls config/ 2>/dev/null | wc -l) files"
+        echo ""
+        echo "📈 Quick Intelligence Check:"
+        python3 core/adaptive_intelligence.py 2>/dev/null | head -n 15 || echo "Intelligence system not ready"
+        ;;
+    "config")
+        echo "⚙️  Configuration Management:"
+        echo "============================"
+        echo ""
+        if [ "$2" = "show" ]; then
+            echo "📋 Current Configuration:"
+            echo ""
+            python3 -c "
+import sys
+sys.path.append('core')
+from config_loader import get_config
+config = get_config()
+print(f'🔧 System Settings:')
+print(f'  Learning enabled: {config.get(\"system.learning_enabled\")}')
+print(f'  Urgent score threshold: {config.get(\"system.urgent_analysis_score\")}')
+print(f'  Daily collection: {config.get(\"system.daily_collection_time\")}')
+print(f'')
+print(f'📊 Monitoring:')
+print(f'  News sources: {len(config.get(\"monitoring.news_sources\", []))}')
+print(f'  Keywords: {len(config.get(\"monitoring.keywords\", []))}')
+print(f'  Economic APIs: {len(config.get(\"monitoring.economic_apis\", {}))}')
+print(f'')
+print(f'🤖 AI Settings:')
+print(f'  Model: {config.get(\"intelligence.model\")}')
+print(f'  Temperature: {config.get(\"intelligence.temperature\")}')
+print(f'  Max tokens: {config.get(\"intelligence.max_tokens\")}')
+"
+        elif [ "$2" = "create" ]; then
+            echo "📝 Creating example user config..."
+            python3 -c "
+import sys
+sys.path.append('core')
+from config_loader import ConfigLoader
+config = ConfigLoader()
+config.create_example_user_config()
+print('✅ Created config/config_example.yaml')
+print('💡 Copy to config/config.yaml and customize as needed')
+"
+        elif [ "$2" = "validate" ]; then
+            echo "🔍 Validating configuration..."
+            python3 -c "
+import sys
+sys.path.append('core')
+from config_loader import get_config
+config = get_config()
+print('✅ Configuration loaded successfully')
+print(f'News sources: {len(config.get(\"monitoring.news_sources\", []))}')
+print(f'Learning enabled: {config.get(\"system.learning_enabled\")}')
+print(f'Urgency threshold: {config.get(\"system.urgent_analysis_score\")}')
+"
+        else
+            echo "Available config commands:"
+            echo "  ./canary config show      - Show current configuration"
+            echo "  ./canary config create    - Create example config file"
+            echo "  ./canary config validate  - Validate configuration"
+            echo ""
+            echo "📁 Configuration Files:"
+            echo "  config/config_defaults.yaml  - System defaults"
+            echo "  config/config.yaml          - User customizations (create from example)"
+            echo "  config/config_example.yaml  - Example user config"
+        fi
+        ;;
+    "help"|"--help"|"-h"|"")
+        echo "🧠 Smart Canary Protocol - Command Interface"
+        echo "============================================="
+        echo ""
+        echo "Available commands:"
+        echo ""
+        echo "🚀 Setup & Management:"
+        echo "  ./canary setup      - Complete system setup"
+        echo "  ./canary dashboard  - View learning progress"
+        echo "  ./canary status     - System status overview"
+        echo "  ./canary config     - Configuration management"
+        echo "  ./canary backup     - Backup all data"
+        echo "  ./canary cron-reset - Reset cron jobs (fix duplicates)"
+        echo ""
+        echo "🧪 Analysis & Testing:"
+        echo "  ./canary test       - Run in test mode"
+        echo "  ./canary emergency  - Emergency analysis"
+        echo ""
+        echo "📝 User Interaction:"
+        echo "  ./canary feedback   - Provide learning feedback"
+        echo ""
+        echo "📖 Examples:"
+        echo "  ./canary config show     - View current settings"
+        echo "  ./canary test           - Test system functionality"
+        echo "  ./canary status         - Check system health"
+        echo ""
+        ;;
+    *)
+        echo "❓ Unknown command: $1"
+        echo "Run './canary help' for available commands"
+        exit 1
+        ;;
+esac

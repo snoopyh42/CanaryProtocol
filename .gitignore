@@ -1,0 +1,108 @@
+# Canary Protocol .gitignore
+
+# Sensitive Configuration Files
+config/.env
+config/subscribers.txt
+
+# Database Files (contains personal data)
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# Log Files (may contain sensitive information)
+logs/*.log
+logs/*.txt
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+.ENV
+.env
+
+# Backup Files
+backups/
+learning_backups/
+*.backup
+*.bak
+
+# Temporary Files
+*.tmp
+*.temp
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE/Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Generated Files
+.directory
+*.orig
+
+# Archive/Cleanup Folders
+archive_cleanup/
+
+# Test Output
+test_output/
+test_results/
+
+# Email Templates with Sensitive Data
+config/email_template_configured.html
+
+# Any files ending in _local or _private
+*_local.*
+*_private.*
+*_secret.*
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# Coverage Reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json

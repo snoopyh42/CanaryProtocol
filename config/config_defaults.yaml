@@ -1,0 +1,80 @@
+# Default configuration for Smart Canary Protocol
+# This file contains default settings - override in config.yaml
+
+system:
+  # Learning system settings
+  learning_enabled: true
+  adaptation_rate: 0.1
+  min_confidence_threshold: 0.6
+  
+  # Analysis frequency
+  daily_collection_time: "08:00"  # 8 AM
+  weekly_analysis_day: "sunday"
+  weekly_analysis_time: "09:00"   # 9 AM
+  
+  # Data retention
+  max_log_age_days: 90
+  backup_frequency_days: 7
+  
+  # Emergency thresholds
+  urgent_analysis_score: 8.0
+  critical_analysis_score: 9.0
+
+monitoring:
+  # News sources (add your preferred sources)
+  news_sources:
+    - "https://feeds.npr.org/1001/rss.xml"
+    - "https://rss.cnn.com/rss/edition.rss"
+    - "https://feeds.reuters.com/Reuters/worldNews"
+  
+  # Economic indicators to track
+  economic_indicators:
+    - "VIX"      # Volatility Index
+    - "GLD"      # Gold prices
+    - "DXY"      # US Dollar Index
+    - "BTC-USD"  # Bitcoin (economic uncertainty indicator)
+  
+  # Keywords for political monitoring
+  political_keywords:
+    - "election fraud"
+    - "constitutional crisis"
+    - "martial law"
+    - "civil unrest"
+    - "political violence"
+  
+  # Keywords for economic monitoring  
+  economic_keywords:
+    - "bank failures"
+    - "hyperinflation"
+    - "currency collapse"
+    - "market crash"
+    - "economic crisis"
+
+notifications:
+  # Email settings
+  send_daily_digest: false
+  send_weekly_digest: true
+  send_urgent_alerts: true
+  
+  # Alert levels
+  alert_levels:
+    info: 5.0
+    warning: 7.0
+    critical: 8.5
+    emergency: 9.5
+
+intelligence:
+  # OpenAI settings
+  model: "gpt-4o"
+  temperature: 0.2
+  max_tokens: 3000
+  
+  # Learning parameters
+  pattern_weight: 0.3
+  source_reliability_weight: 0.4
+  temporal_weight: 0.3
+  
+  # Feedback integration
+  user_feedback_weight: 0.5
+  false_positive_penalty: -0.2
+  confirmed_alert_bonus: 0.3

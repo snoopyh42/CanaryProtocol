@@ -1,0 +1,31 @@
+# Example Environment Variables for Smart Canary Protocol
+# Instructions:
+# 1. Copy this file to .env in the same directory
+# 2. Replace placeholder values with your actual API keys and credentials
+# 3. The .env file will be automatically ignored by git for security
+
+# OpenAI API Configuration (Required)
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Gmail Configuration (Required for email digests)
+GMAIL_USER=your_email@gmail.com
+GMAIL_APP_PASSWORD=your_gmail_app_password_here
+
+# Optional: Slack Integration
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+
+# Optional: Reddit API (for enhanced social sentiment analysis)
+REDDIT_CLIENT_ID=your_reddit_client_id
+REDDIT_CLIENT_SECRET=your_reddit_client_secret
+REDDIT_USER_AGENT=CanaryProtocol/1.0
+
+# Optional: Twitter/X API (for enhanced social monitoring)
+X_BEARER_TOKEN=your_x_bearer_token
+
+# Optional: Economic Data APIs (system works without these)
+FRED_API_KEY=your_fred_api_key_for_economic_data
+ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key
+
+# System Configuration
+LOG_LEVEL=INFO
+DEBUG_MODE=false

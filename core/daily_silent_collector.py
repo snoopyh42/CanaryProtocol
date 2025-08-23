@@ -1,0 +1,338 @@
+#!/usr/bin/env python3
+"""
+Daily Silent Data Collector for Canary Protocol
+Collects data daily without analysis - feeds into weekly AI processing
+"""
+
+import sqlite3
+import json
+from datetime import datetime, timedelta
+import sys
+import os
+
+# Add the current directory to the path to import our modules
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from canary_protocol import fetch_news, fetch_economic_data
+from adaptive_intelligence import CanaryIntelligence
+
+class SilentCollector:
+    def __init__(self, db_path="data/canary_protocol.db"):
+        self.db_path = db_path
+        # Ensure data directory exists
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        self.init_collector_db()
+    
+    def init_collector_db(self):
+        """Initialize daily collection tables"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS daily_headlines (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT,
+                headlines_json TEXT,
+                headline_count INTEGER,
+                urgency_keywords_found TEXT
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS daily_economic (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT,
+                economic_json TEXT,
+                high_concern_count INTEGER,
+                vix_level REAL,
+                trend_direction TEXT
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS emergency_triggers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT,
+                trigger_type TEXT,
+                trigger_data TEXT,
+                urgency_level INTEGER,
+                should_alert BOOLEAN
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+    
+    def collect_daily_data(self, verbose=False):
+        """Silently collect daily data for later analysis"""
+        if verbose:
+            print(f"📊 Silent daily collection - {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        
+        # Collect headlines (returns JSON string, need to parse)
+        headlines_json = fetch_news()
+        headlines = json.loads(headlines_json) if headlines_json else []
+        headline_count = len(headlines)
+        
+        # Collect economic data
+        economic_data = fetch_economic_data()
+        
+        # Basic urgency keyword detection (no AI)
+        urgency_keywords = self._detect_urgency_keywords(headlines)
+        
+        # Economic trend analysis
+        vix_level, trend_direction, high_concern_count = self._analyze_economic_trends(economic_data)
+        
+        # Store data
+        self._store_daily_data(headlines, economic_data, urgency_keywords, 
+                              vix_level, trend_direction, high_concern_count)
+        
+        # Check for emergency triggers
+        emergency_level = self._check_emergency_triggers(headlines, economic_data, urgency_keywords)
+        
+        if verbose:
+            print(f"   📰 Headlines: {headline_count}")
+            print(f"   📈 Economic indicators: {len(economic_data)}")
+            print(f"   🚨 Urgency keywords: {len(urgency_keywords)}")
+            print(f"   📊 VIX level: {vix_level}")
+            if emergency_level > 0:
+                print(f"   ⚠️  Emergency trigger detected: Level {emergency_level}")
+        
+        return emergency_level
+    
+    def _detect_urgency_keywords(self, headlines):
+        """Simple keyword detection without AI"""
+        emergency_terms = [
+            "martial law", "emergency powers", "constitutional crisis",
+            "bank run", "currency collapse", "market crash",
+            "civil unrest", "nationwide protests", "government shutdown",
+            "supreme court overturns", "mass arrests", "declaration of emergency"
+        ]
+        
+        found_keywords = []
+        all_text = " ".join([h.get('title', '') for h in headlines]).lower()
+        
+        for term in emergency_terms:
+            if term in all_text:
+                found_keywords.append(term)
+        
+        return found_keywords
+    
+    def _analyze_economic_trends(self, economic_data):
+        """Basic economic trend analysis"""
+        vix_level = 0
+        high_concern_count = 0
+        trend_direction = "stable"
+        
+        for indicator in economic_data:
+            if indicator.get('concern_level') == 'high':
+                high_concern_count += 1
+            
+            if indicator.get('indicator') == 'VIX Fear Index':
+                try:
+                    vix_text = indicator.get('status', '0')
+                    vix_level = float(vix_text.split(':')[1].split('-')[0].strip())
+                except:
+                    vix_level = 0
+        
+        # Determine trend direction
+        if high_concern_count >= 3:
+            trend_direction = "concerning"
+        elif high_concern_count >= 2:
+            trend_direction = "mixed"
+        
+        return vix_level, trend_direction, high_concern_count
+    
+    def _store_daily_data(self, headlines, economic_data, urgency_keywords, 
+                         vix_level, trend_direction, high_concern_count):
+        """Store daily collection data"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        # Store headlines
+        cursor.execute('''
+            INSERT OR REPLACE INTO daily_headlines 
+            (date, headlines_json, headline_count, urgency_keywords_found)
+            VALUES (?, ?, ?, ?)
+        ''', (today, json.dumps(headlines), len(headlines), json.dumps(urgency_keywords)))
+        
+        # Store economic data
+        cursor.execute('''
+            INSERT OR REPLACE INTO daily_economic 
+            (date, economic_json, high_concern_count, vix_level, trend_direction)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (today, json.dumps(economic_data), high_concern_count, vix_level, trend_direction))
+        
+        conn.commit()
+        conn.close()
+    
+    def _check_emergency_triggers(self, headlines, economic_data, urgency_keywords):
+        """Check if emergency analysis should be triggered"""
+        emergency_level = 0
+        
+        # High urgency keywords found
+        if len(urgency_keywords) >= 3:
+            emergency_level = max(emergency_level, 8)
+        elif len(urgency_keywords) >= 2:
+            emergency_level = max(emergency_level, 6)
+        elif len(urgency_keywords) >= 1:
+            emergency_level = max(emergency_level, 4)
+        
+        # Economic emergency indicators
+        high_concern_count = sum(1 for e in economic_data if e.get('concern_level') == 'high')
+        if high_concern_count >= 3:
+            emergency_level = max(emergency_level, 7)
+        
+        # Store emergency trigger if significant
+        if emergency_level >= 6:
+            self._store_emergency_trigger(emergency_level, urgency_keywords, high_concern_count)
+        
+        return emergency_level
+    
+    def _store_emergency_trigger(self, level, keywords, economic_concerns):
+        """Store emergency trigger for potential immediate analysis"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        trigger_data = {
+            'urgency_keywords': keywords,
+            'economic_concerns': economic_concerns,
+            'trigger_level': level
+        }
+        
+        cursor.execute('''
+            INSERT INTO emergency_triggers 
+            (date, trigger_type, trigger_data, urgency_level, should_alert)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (datetime.now().isoformat(), 'daily_check', json.dumps(trigger_data), level, level >= 8))
+        
+        conn.commit()
+        conn.close()
+    
+    def get_weekly_summary(self, days_back=7):
+        """Generate summary of collected data for weekly analysis"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        start_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+        
+        # Get daily headlines
+        cursor.execute('''
+            SELECT date, headline_count, urgency_keywords_found 
+            FROM daily_headlines 
+            WHERE date >= ? 
+            ORDER BY date DESC
+        ''', (start_date,))
+        
+        headlines_data = cursor.fetchall()
+        
+        # Get economic trends
+        cursor.execute('''
+            SELECT date, high_concern_count, vix_level, trend_direction 
+            FROM daily_economic 
+            WHERE date >= ? 
+            ORDER BY date DESC
+        ''', (start_date,))
+        
+        economic_data = cursor.fetchall()
+        
+        # Get emergency triggers
+        cursor.execute('''
+            SELECT date, urgency_level, trigger_data 
+            FROM emergency_triggers 
+            WHERE date >= ? 
+            ORDER BY urgency_level DESC
+        ''', (start_date,))
+        
+        emergency_data = cursor.fetchall()
+        
+        conn.close()
+        
+        # Compile summary
+        total_urgency_keywords = 0
+        max_vix = 0
+        concerning_days = 0
+        
+        for date, count, keywords_json in headlines_data:
+            try:
+                keywords = json.loads(keywords_json)
+                total_urgency_keywords += len(keywords)
+            except:
+                pass
+        
+        for date, concern_count, vix, trend in economic_data:
+            max_vix = max(max_vix, vix or 0)
+            if trend == "concerning":
+                concerning_days += 1
+        
+        summary = {
+            'collection_period': f"{start_date} to {datetime.now().strftime('%Y-%m-%d')}",
+            'days_collected': len(headlines_data),
+            'total_urgency_keywords': total_urgency_keywords,
+            'max_vix_level': max_vix,
+            'concerning_economic_days': concerning_days,
+            'emergency_triggers': len(emergency_data),
+            'highest_emergency_level': max([e[1] for e in emergency_data], default=0)
+        }
+        
+        return summary
+    
+    def should_trigger_emergency_analysis(self):
+        """Check if emergency analysis should be triggered"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Check for recent high-level triggers
+        cursor.execute('''
+            SELECT COUNT(*) FROM emergency_triggers 
+            WHERE date >= date('now', '-1 day') AND urgency_level >= 8
+        ''')
+        
+        high_triggers = cursor.fetchone()[0]
+        conn.close()
+        
+        return high_triggers > 0
+
+def main():
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Daily Silent Data Collector')
+    parser.add_argument('--verbose', action='store_true', help='Show collection details')
+    parser.add_argument('--summary', action='store_true', help='Show weekly summary')
+    parser.add_argument('--check-emergency', action='store_true', help='Check for emergency triggers')
+    
+    args = parser.parse_args()
+    
+    collector = SilentCollector()
+    
+    if args.summary:
+        summary = collector.get_weekly_summary()
+        print("📊 WEEKLY DATA COLLECTION SUMMARY")
+        print("=" * 40)
+        print(f"Period: {summary['collection_period']}")
+        print(f"Days collected: {summary['days_collected']}")
+        print(f"Total urgency keywords found: {summary['total_urgency_keywords']}")
+        print(f"Max VIX level: {summary['max_vix_level']:.1f}")
+        print(f"Concerning economic days: {summary['concerning_economic_days']}")
+        print(f"Emergency triggers: {summary['emergency_triggers']}")
+        if summary['highest_emergency_level'] > 0:
+            print(f"⚠️  Highest emergency level: {summary['highest_emergency_level']}")
+    
+    elif args.check_emergency:
+        should_trigger = collector.should_trigger_emergency_analysis()
+        if should_trigger:
+            print("🚨 EMERGENCY ANALYSIS RECOMMENDED")
+            print("High-urgency triggers detected in the last 24 hours.")
+            print("Consider running: python3 canary_protocol.py --emergency")
+        else:
+            print("✅ No emergency triggers detected")
+    
+    else:
+        emergency_level = collector.collect_daily_data(verbose=args.verbose)
+        if emergency_level >= 8 and not args.verbose:
+            print(f"🚨 Emergency trigger detected: Level {emergency_level}")
+            print("Consider running immediate analysis.")
+
+if __name__ == "__main__":
+    main()

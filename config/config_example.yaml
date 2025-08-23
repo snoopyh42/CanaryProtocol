@@ -1,0 +1,14 @@
+# Example user configuration for Smart Canary Protocol
+# Copy this file to config.yaml and customize as needed
+
+monitoring:
+  news_sources:
+  - https://feeds.npr.org/1001/rss.xml
+  - https://rss.cnn.com/rss/edition.rss
+  - https://feeds.reuters.com/Reuters/worldNews
+notifications:
+  send_daily_digest: false
+  send_weekly_digest: true
+system:
+  learning_enabled: true
+  urgent_analysis_score: 7.5

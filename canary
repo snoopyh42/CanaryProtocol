@@ -3,10 +3,22 @@
 # Canary Protocol - Main Command Interface
 # Provides easy access to all system functions
 
-SCRIPT_DIR="/home/ahansen/CanaryProtocol"
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Check if no arguments provided - launch TUI
+if [ $# -eq 0 ]; then
+    echo "🐦 Launching Smart Canary Protocol TUI..."
+    python3 core/canary_tui.py
+    exit 0
+fi
+
 case "$1" in
+    "tui"|"menu"|"interactive")
+        echo "🐦 Launching Smart Canary Protocol TUI..."
+        python3 core/canary_tui.py
+        ;;
     "setup")
         echo "🚀 Running complete system setup..."
         scripts/setup_complete_smart_system.sh
@@ -105,7 +117,7 @@ case "$1" in
         ;;
     "test")
         echo "🧪 Running test mode..."
-        python3 core/canary_protocol.py --test --verbose
+        python3 core/canary_protocol.py --test
         ;;
     "backup")
         echo "💾 Creating system backup..."
@@ -143,7 +155,7 @@ case "$1" in
         # Remove all canary cron jobs first
         crontab -l | grep -v canary_protocol | crontab -
         # Add back the single correct one
-        (crontab -l 2>/dev/null; echo "0 8 * * * cd /home/ahansen/CanaryProtocol && python3 core/canary_protocol.py >> logs/canary_cron.log 2>&1") | crontab -
+        (crontab -l 2>/dev/null; echo "0 8 * * * cd $SCRIPT_DIR && python3 core/canary_protocol.py >> logs/canary_cron.log 2>&1") | crontab -
         echo "✅ Cron jobs reset successfully"
         ;;
     "status")

@@ -476,6 +476,36 @@ class XMonitor:
             'trending_velocity': self._calculate_trending_velocity(tweets)
         }
 
+    def get_trending_topics(self):
+        """Get trending topics for social media analysis"""
+        try:
+            # Get recent weekly analysis
+            trends_data = self.get_weekly_analysis()
+            
+            if not trends_data:
+                return "No trending topics available - API limitations"
+            
+            # Extract trending information from political and economic trends
+            trending_topics = []
+            
+            political_trends = trends_data.get('political_trends', {})
+            for keyword, data in political_trends.items():
+                if data.get('tweet_count', 0) > 0:
+                    trending_topics.append(f"Political: {keyword} ({data.get('tweet_count', 0)} tweets)")
+            
+            economic_trends = trends_data.get('economic_trends', {})
+            for keyword, data in economic_trends.items():
+                if data.get('tweet_count', 0) > 0:
+                    trending_topics.append(f"Economic: {keyword} ({data.get('tweet_count', 0)} tweets)")
+            
+            if trending_topics:
+                return "\n".join(trending_topics[:5])  # Limit to top 5
+            else:
+                return "Limited trending data available due to API constraints"
+                
+        except Exception as e:
+            return f"Trending topics unavailable: {str(e)}"
+
     def _calculate_trending_velocity(self, tweets):
         """Calculate how quickly a topic is trending"""
         if not tweets:

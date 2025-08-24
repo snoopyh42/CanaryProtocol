@@ -167,7 +167,8 @@ def call_openai_analysis(openai_client, prompt: str, model: str = "gpt-4o",
         return response.choices[0].message.content.strip()
     except Exception as e:
         log_error(f"OpenAI API call failed after retries: {e}")
-        return "Summary not available after multiple attempts."
+        # Return a more informative fallback summary
+        return f"Analysis temporarily unavailable due to API limitations. Headlines processed: {len(prompt.split('Title:')) - 1 if 'Title:' in prompt else 'multiple'}. Please check logs for details."
 
 
 def analyze_headlines_with_ai(openai_client, headlines: List[Dict[str, str]], 

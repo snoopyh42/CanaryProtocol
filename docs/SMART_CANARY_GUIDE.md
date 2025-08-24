@@ -81,8 +81,8 @@
 ./canary feedback-clear
 
 # Report specific issues
-python3 core/smart_feedback.py --false-positive "Headline that was wrong"
-python3 core/smart_feedback.py --missed-signal "Important event that was overlooked"
+./canary feedback --false-positive "Headline that was wrong"
+./canary feedback --missed-signal "Important event that was overlooked"
 ```
 
 ### **Step 5: Let It Learn Automatically**
@@ -137,19 +137,19 @@ When you run `./canary articles`, you'll see articles like:
 ### **Data Management**
 ```bash
 ./canary feedback-clear     # Interactive menu to clear feedback data
-python3 core/individual_feedback.py --clear        # Clear article feedback only
-python3 core/smart_feedback.py --clear            # Clear digest feedback only
+./canary feedback-individual --clear        # Clear article feedback only
+./canary feedback --clear            # Clear digest feedback only
 ```
 
 ### **Advanced Feedback**
 ```bash
 # Report specific issues (helps with edge cases)
-python3 core/smart_feedback.py --false-positive "Misleading headline"
-python3 core/smart_feedback.py --missed-signal "Important event overlooked"
+./canary feedback --false-positive "Misleading headline"
+./canary feedback --missed-signal "Important event overlooked"
 
 # View detailed summaries
-python3 core/individual_feedback.py --summary --days 30
-python3 core/smart_feedback.py --summary
+./canary feedback-individual --summary --days 30
+./canary feedback --summary
 ```
 
 ### **Week 1-2: Basic Learning**

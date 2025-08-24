@@ -340,13 +340,13 @@ EOF
 ### **Database Migrations**
 ```bash
 # Check migration status
-python3 core/database_migrations.py --status
+./canary migrate --status
 
 # Apply pending migrations
-python3 core/database_migrations.py --migrate
+./canary migrate
 
 # Create initial migrations (first deployment)
-python3 core/database_migrations.py --create-initial
+./canary migrate --create-initial
 ```
 
 ### **Backup Strategy**
@@ -367,13 +367,13 @@ python3 core/database_migrations.py --create-initial
 ### **Data Archival**
 ```bash
 # Run data archival
-python3 core/data_archival.py --run
+./canary archive --run
 
 # Check archive summary
-python3 core/data_archival.py --summary
+./canary archive --summary
 
 # Archive specific table
-python3 core/data_archival.py --table daily_headlines
+./canary archive --table daily_headlines
 ```
 
 ## 🚨 Disaster Recovery
@@ -481,10 +481,10 @@ pkill -f "python3.*canary"
 find data/archives/ -name "*.gz" -mtime +365 -delete
 
 # Run data archival
-python3 core/data_archival.py --run
+./canary archive --run
 ```
 
-**Email Delivery Issues:**
+**Email Delivery Issues:
 ```bash
 # Test email configuration
 ./canary test --verbose

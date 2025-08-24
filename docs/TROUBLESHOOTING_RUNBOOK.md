@@ -144,20 +144,20 @@ Error: Migration 1.1.0 failed: no such column
 
 **Diagnosis:**
 ```bash
-# Check migration status
-python3 core/database_migrations.py --status
+# Check database status
+./canary migrate --status
 ```
 
 **Solution:**
 ```bash
 # Rollback failed migration
-python3 core/database_migrations.py --rollback 1.1.0
+./canary migrate --rollback 1.1.0
 
 # Check database schema
 sqlite3 data/canary_protocol.db ".schema"
 
 # Reapply migrations
-python3 core/database_migrations.py --migrate
+./canary migrate
 ```
 
 ### **3. Email Delivery Issues**
@@ -296,7 +296,7 @@ du -sh /home/canary/CanaryProtocol/*
 find logs/ -name "*.log" -mtime +30 -delete
 
 # Run data archival
-python3 core/data_archival.py --run
+./canary archive --run
 
 # Clean old archives
 find data/archives/ -name "*.gz" -mtime +365 -delete
@@ -662,7 +662,7 @@ python3 tests/test_comprehensive.py
 
 ### **Monthly Checks**
 - [ ] Database optimization: `sqlite3 data/canary_protocol.db "VACUUM; ANALYZE;"`
-- [ ] Archive old data: `python3 core/data_archival.py --run`
+- [ ] Archive old data: `./canary archive --run`
 - [ ] Security updates: Update system packages
 - [ ] Full diagnostic: Run complete system check
 

@@ -183,13 +183,9 @@ class ABTestRunner:
                 high_concern = [
                     e for e in test_case["economic_data"] if e.get('concern_level') == 'high']
                 if high_concern:
-                    economic_context = f"\n\nEconomic concerns: {
-                        ', '.join(
-                            [
-                                e['indicator'] + ': ' + e['status'] for e in high_concern])}"
+                    economic_context = f"\n\nEconomic concerns: {', '.join([e['indicator'] + ': ' + e['status'] for e in high_concern])}"
 
-            user_prompt = f"""Current urgency level: {
-                test_case['urgency_level']}
+            user_prompt = f"""Current urgency level: {test_case['urgency_level']}
 Economic context: {economic_context}
 
 Headlines to analyze:

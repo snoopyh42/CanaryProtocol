@@ -164,8 +164,10 @@ class CanaryTUI:
                              "dashboard", "feedback", "articles", "archive", "migrate", "ab-test", "run"]
             
             if command in canary_commands:
-                # Use the unified canary script
-                result = subprocess.run(["./canary", command], cwd="..", capture_output=True, text=True)
+                # Use the unified canary script - get absolute path to project root
+                script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                canary_path = os.path.join(script_dir, "canary")
+                result = subprocess.run([canary_path, command], capture_output=True, text=True)
             else:
                 # Direct script execution for commands not yet integrated
                 result = subprocess.run(command.split(), cwd="..", capture_output=True, text=True)
@@ -179,8 +181,10 @@ class CanaryTUI:
         try:
             curses.endwin()
             
-            # Use the unified canary command
-            subprocess.run(["./canary", "feedback-summary"], cwd="..")
+            # Use the unified canary command - get absolute path
+            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            canary_path = os.path.join(script_dir, "canary")
+            subprocess.run([canary_path, "feedback-summary"])
             
             input("\nPress Enter to continue...")
             
@@ -201,7 +205,9 @@ class CanaryTUI:
             curses.endwin()
             
             # Use the unified canary command which handles the interactive menu
-            subprocess.run(["./canary", "feedback-clear"], cwd="..")
+            script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            canary_path = os.path.join(script_dir, "canary")
+            subprocess.run([canary_path, "feedback-clear"])
             
             input("Press Enter to continue...")
             
@@ -469,11 +475,6 @@ class CanaryTUI:
             
             # Handle input
             key = stdscr.getch()
-            
-            # Debug key codes for SSH troubleshooting
-            if key != -1 and key != curses.ERR:
-                stdscr.addstr(0, 0, f"Key: {key} ", curses.color_pair(4))
-                stdscr.refresh()
             
             if key == ord('q') or key == ord('Q'):
                 self.running = False

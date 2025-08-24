@@ -168,7 +168,10 @@ class IndividualFeedbackSystem(BaseDBClass):
                 show_rated = input(
                     "\n🔍 Would you like to see your previous ratings for this digest? (y/n): ").strip().lower()
                 if show_rated in ['y', 'yes']:
-                    self._show_previous_ratings(digest_date)
+                    conn = sqlite3.connect(self.db_path)
+                    cursor = conn.cursor()
+                    self._show_previous_ratings(digest_date, cursor)
+                    conn.close()
             except EOFError:
                 # Non-interactive mode, skip the prompt
                 pass

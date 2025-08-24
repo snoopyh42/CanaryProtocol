@@ -35,8 +35,8 @@ def get_social_media_analysis(x_monitor: Optional[Any] = None) -> Dict[str, Any]
             'status': 'active',
             'analysis': analysis_text,
             'urgency_boost': urgency_boost,
-            'trends': trends[:5],  # Top 5 trends
-            'sentiment': sentiment.get('overall', 'neutral')
+            'trends': trends[:5] if isinstance(trends, list) else [],  # Top 5 trends
+            'sentiment': sentiment.get('overall', 'neutral') if isinstance(sentiment, dict) else sentiment
         }
         
     except Exception as e:

@@ -127,18 +127,30 @@ def call_openai_analysis(openai_client, prompt: str, model: str = "gpt-4o",
     try:
         from utils import RetryHandler
     except ImportError:
-        # Fallback without retry logic
+        # Fallback without retry logic - try direct API call
         try:
             response = openai_client.chat.completions.create(
                 model=model,
-                messages=[{"role": "user", "content": prompt}],
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": "You are an expert political and economic analyst with 20+ years experience monitoring U.S. stability. You provide objective, factual analysis for informed citizens. Your assessments are measured, evidence-based, and actionable."
+                    },
+                    {
+                        "role": "user", 
+                        "content": prompt
+                    }
+                ],
                 temperature=temperature,
-                max_tokens=max_tokens
+                max_tokens=max_tokens,
+                top_p=0.9,
+                frequency_penalty=0.1,
+                presence_penalty=0.1
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
             log_error(f"OpenAI API call failed: {e}")
-            return f"Error: Failed to generate analysis - {str(e)}"
+            return f"Analysis temporarily unavailable due to API error: {str(e)}. Headlines were processed but AI analysis could not be completed."
     
     retry_handler = RetryHandler(max_retries=3, base_delay=2.0)
     

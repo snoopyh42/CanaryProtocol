@@ -29,18 +29,17 @@ class XMonitor:
         try:
             import sys
             import os
-            sys.path.append(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.abspath(__file__))))
-            from .config_loader import get_config, get_setting
+            # Add the classes directory to the path
+            sys.path.insert(0, os.path.dirname(__file__))
+            from config_loader import get_config, get_setting
             self.config = get_config()
             self.social_config = get_setting('monitoring.social_media', {})
             self.config_enabled = True
-        except ImportError:
+        except ImportError as e:
             self.config_enabled = False
             self.social_config = {}
-            print("⚠️  YAML configuration not available, using defaults")
+            # Suppress the warning message to reduce noise
+            pass
 
         # Load X API credentials
         self.bearer_token = self._load_api_credentials(config_path)
@@ -505,6 +504,48 @@ class XMonitor:
                 
         except Exception as e:
             return f"Trending topics unavailable: {str(e)}"
+
+    def analyze_political_sentiment(self):
+        """Analyze political sentiment from social media trends"""
+        try:
+            # Get recent weekly analysis
+            trends_data = self.get_weekly_analysis()
+            
+            if not trends_data:
+                return "Political sentiment analysis unavailable - API limitations"
+            
+            political_trends = trends_data.get('political_trends', {})
+            if not political_trends:
+                return "No political trends data available for sentiment analysis"
+            
+            # Calculate overall sentiment based on engagement and keywords
+            total_engagement = 0
+            negative_indicators = 0
+            positive_indicators = 0
+            
+            for keyword, data in political_trends.items():
+                engagement = data.get('engagement_score', 0)
+                total_engagement += engagement
+                
+                # Simple sentiment analysis based on keyword patterns
+                if any(neg_word in keyword.lower() for neg_word in ['crisis', 'scandal', 'protest', 'conflict', 'impeach']):
+                    negative_indicators += engagement
+                elif any(pos_word in keyword.lower() for pos_word in ['success', 'victory', 'peace', 'growth', 'unity']):
+                    positive_indicators += engagement
+            
+            if total_engagement == 0:
+                return "Neutral sentiment - limited engagement data"
+            
+            # Calculate sentiment ratio
+            if negative_indicators > positive_indicators * 1.5:
+                return "Negative political sentiment detected - heightened tensions"
+            elif positive_indicators > negative_indicators * 1.5:
+                return "Positive political sentiment - stable discourse"
+            else:
+                return "Mixed political sentiment - balanced discourse"
+                
+        except Exception as e:
+            return f"Political sentiment analysis unavailable: {str(e)}"
 
     def _calculate_trending_velocity(self, tweets):
         """Calculate how quickly a topic is trending"""

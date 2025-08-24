@@ -452,6 +452,11 @@ class CanaryTUI:
         stdscr.keypad(True)
         stdscr.timeout(100)  # Non-blocking input
         
+        # Better SSH compatibility
+        curses.curs_set(0)  # Hide cursor
+        if hasattr(curses, 'use_default_colors'):
+            curses.use_default_colors()
+        
         while self.running:
             stdscr.clear()
             
@@ -465,6 +470,11 @@ class CanaryTUI:
             # Handle input
             key = stdscr.getch()
             
+            # Debug key codes for SSH troubleshooting
+            if key != -1 and key != curses.ERR:
+                stdscr.addstr(0, 0, f"Key: {key} ", curses.color_pair(4))
+                stdscr.refresh()
+            
             if key == ord('q') or key == ord('Q'):
                 self.running = False
             elif key == ord('h') or key == ord('H'):
@@ -475,10 +485,43 @@ class CanaryTUI:
             elif key == curses.KEY_DOWN or key == ord('j'):
                 self.selected = (self.selected + 1) % len(self.menu_items)
                 self._update_scroll()
-            elif key == ord('\n') or key == curses.KEY_ENTER or key == 10:
+            elif key == ord('\n') or key == curses.KEY_ENTER or key == 10 or key == 13 or key == 343:
                 _, command, _ = self.menu_items[self.selected]
-                if not self.execute_command(stdscr, command):
-                    self.running = False
+                
+                # Handle special commands that need custom interfaces
+                if command == "status":
+                    self.show_status(stdscr)
+                elif command == "config":
+                    self.show_config(stdscr)
+                elif command == "logs":
+                    self.show_logs(stdscr)
+                elif command == "restore":
+                    self.show_restore(stdscr)
+                elif command == "feedback-summary":
+                    self.show_feedback_summary(stdscr)
+                elif command == "feedback-clear":
+                    self.show_feedback_clear(stdscr)
+                else:
+                    # Execute command and show results
+                    success, stdout, stderr = self.execute_command(stdscr, command)
+                    
+                    # Show command output
+                    curses.endwin()
+                    if stdout:
+                        print(stdout)
+                    if stderr:
+                        print(f"Error: {stderr}")
+                    if not success:
+                        print(f"Command failed")
+                    
+                    input("\nPress Enter to continue...")
+                    
+                    # Reinitialize curses
+                    stdscr = curses.initscr()
+                    curses.noecho()
+                    curses.cbreak()
+                    stdscr.keypad(True)
+                    stdscr.timeout(100)
 
 def main():
     """Main entry point"""

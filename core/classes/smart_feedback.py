@@ -1,34 +1,37 @@
 #!/usr/bin/env python3
 """
 Smart Feedback System for Canary Protocol
-Allows users to provide feedback to improve AI accuracy over time
+Provides intelligent analysis and feedback on news articles and economic data
 """
 
-import sqlite3
-import json
 import os
 import sys
-import argparse
+import sqlite3
 from datetime import datetime
+from typing import List, Dict, Any, Optional
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-try:
-    from functions.utils import ensure_directory_exists
-except ImportError:
-    # Fallback for when running from different directory
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'functions'))
-    from utils import ensure_directory_exists
+# Add necessary paths for imports
+current_dir = os.path.dirname(__file__)
+sys.path.insert(0, os.path.join(current_dir, '..', 'functions'))
+sys.path.insert(0, current_dir)
 
 try:
-    from .base_db_class import BaseDBClass
+    from base_db_class import BaseDBClass
 except ImportError:
-    try:
-        from base_db_class import BaseDBClass
-    except ImportError:
-        # Fallback for when running from different directory
-        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-        from classes.base_db_class import BaseDBClass
+    # Fallback for base class
+    from abc import ABC, abstractmethod
+    
+    class BaseDBClass(ABC):
+        def __init__(self, db_path: str = "data/canary_protocol.db"):
+            self.db_path = db_path
+            db_dir = os.path.dirname(self.db_path)
+            if db_dir:
+                os.makedirs(db_dir, exist_ok=True)
+            self.init_db()
+        
+        @abstractmethod
+        def init_db(self):
+            pass
 
 class FeedbackSystem(BaseDBClass):
     def __init__(self, db_path="data/canary_protocol.db"):
@@ -185,7 +188,7 @@ class FeedbackSystem(BaseDBClass):
 
     def _update_intelligence_from_feedback(self, predicted, actual, comments):
         """Update AI intelligence based on user feedback"""
-        from .adaptive_intelligence import CanaryIntelligence
+        from adaptive_intelligence import CanaryIntelligence
 
         intelligence = CanaryIntelligence()
         conn = sqlite3.connect(intelligence.db_path)
@@ -275,7 +278,11 @@ class FeedbackSystem(BaseDBClass):
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        # Accuracy trends
+        # Get total feedback count from user_feedback table
+        cursor.execute('SELECT COUNT(*) FROM user_feedback')
+        total_feedback_count = cursor.fetchone()[0] or 0
+
+        # Accuracy trends from prediction_tracking
         cursor.execute('''
             SELECT AVG(prediction_accuracy), COUNT(*)
             FROM prediction_tracking
@@ -283,9 +290,9 @@ class FeedbackSystem(BaseDBClass):
         ''')
         accuracy_data = cursor.fetchone()
         avg_accuracy = accuracy_data[0] or 0
-        feedback_count = accuracy_data[1] or 0
+        prediction_count = accuracy_data[1] or 0
 
-        # Recent feedback
+        # Recent feedback from user_feedback table
         cursor.execute('''
             SELECT feedback_type, COUNT(*)
             FROM user_feedback
@@ -310,7 +317,7 @@ class FeedbackSystem(BaseDBClass):
 
 📊 Overall Performance:
 - Prediction Accuracy: {avg_accuracy:.1%}
-- Total Feedback Entries: {feedback_count}
+- Total Feedback Entries: {total_feedback_count}
 - Recent Accurate Predictions: {recent_feedback.get('accurate', 0)}
 - Recent Inaccurate Predictions: {recent_feedback.get('inaccurate', 0)}
 
@@ -318,7 +325,7 @@ class FeedbackSystem(BaseDBClass):
 - False Positives Reported: {false_positive_count}
 - Missed Signals Reported: {missed_signal_count}
 
-📈 Learning Status: {'🟢 ACTIVE' if feedback_count > 0 else '🟡 WAITING FOR FEEDBACK'}
+📈 Learning Status: {'🟢 ACTIVE' if total_feedback_count > 0 else '🟡 WAITING FOR FEEDBACK'}
 """
 
     def clear_all_feedback(self, confirm=False):
@@ -377,6 +384,9 @@ class FeedbackSystem(BaseDBClass):
 
 
 def main():
+    import argparse
+    import json
+
     parser = argparse.ArgumentParser(
         description='Canary Protocol Feedback System')
     parser.add_argument(

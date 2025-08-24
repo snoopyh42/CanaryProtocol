@@ -153,7 +153,9 @@ class CanaryTUI:
                 stdscr.addstr(i, 2, line[:width-4])
         
         stdscr.refresh()
+        stdscr.timeout(-1)  # Make getch() blocking
         stdscr.getch()
+        stdscr.timeout(100)  # Restore non-blocking timeout
 
     def execute_command(self, stdscr, command: str) -> bool:
         """Execute the selected command"""

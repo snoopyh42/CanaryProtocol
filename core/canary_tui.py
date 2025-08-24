@@ -503,17 +503,18 @@ class CanaryTUI:
                 elif command == "feedback-clear":
                     self.show_feedback_clear(stdscr)
                 else:
-                    # Execute command and show results
-                    success, stdout, stderr = self.execute_command(stdscr, command)
-                    
-                    # Show command output
+                    # Exit curses mode and run command directly
                     curses.endwin()
-                    if stdout:
-                        print(stdout)
-                    if stderr:
-                        print(f"Error: {stderr}")
-                    if not success:
-                        print(f"Command failed")
+                    
+                    # Get absolute path to canary script
+                    script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                    canary_path = os.path.join(script_dir, "canary")
+                    
+                    # Run command directly in terminal
+                    try:
+                        subprocess.run([canary_path, command])
+                    except Exception as e:
+                        print(f"Error executing command: {e}")
                     
                     input("\nPress Enter to continue...")
                     
@@ -523,6 +524,9 @@ class CanaryTUI:
                     curses.cbreak()
                     stdscr.keypad(True)
                     stdscr.timeout(100)
+                    curses.curs_set(0)
+                    if hasattr(curses, 'use_default_colors'):
+                        curses.use_default_colors()
 
 def main():
     """Main entry point"""

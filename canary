@@ -153,7 +153,14 @@ case "$1" in
         python3 core/ab_testing.py "$@"
         ;;
     "collect")
-        python3 core/classes/daily_silent_collector.py "$@"
+        shift  # Remove 'collect' from arguments
+        if [ "$1" = "summary" ]; then
+            python3 core/classes/daily_silent_collector.py --summary
+        elif [ "$1" = "check-emergency" ]; then
+            python3 core/classes/daily_silent_collector.py --check-emergency
+        else
+            python3 core/classes/daily_silent_collector.py "$@"
+        fi
         ;;
     "restore")
         echo "🔄 Data Restore Manager..."

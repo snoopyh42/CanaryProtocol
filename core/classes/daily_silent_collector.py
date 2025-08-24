@@ -467,11 +467,6 @@ def main():
 
     parser = argparse.ArgumentParser(description='Daily Silent Data Collector')
     parser.add_argument(
-        'command',
-        nargs='?',
-        default='collect',
-        help='Command to run (collect, summary, check-emergency)')
-    parser.add_argument(
         '--verbose',
         action='store_true',
         help='Show collection details')
@@ -483,19 +478,32 @@ def main():
         '--check-emergency',
         action='store_true',
         help='Check for emergency triggers')
+    
+    # Handle positional arguments manually
+    import sys
+    command = 'collect'  # default
+    if len(sys.argv) > 1 and not sys.argv[1].startswith('--'):
+        command = sys.argv[1]
+        # Remove the command from sys.argv so argparse doesn't see it
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
 
     args = parser.parse_args()
 
     collector = SilentCollector()
 
-    if args.summary:
+    if command == 'summary' or args.summary:
         summary = collector.get_weekly_summary()
         print("📊 WEEKLY DATA COLLECTION SUMMARY")
         print("=" * 40)
         print(f"Period: {summary['collection_period']}")
         print(f"Days collected: {summary['days_collected']}")
+        print(f"Total urgency keywords: {summary['total_urgency_keywords']}")
+        print(f"Max VIX level: {summary['max_vix_level']}")
+        print(f"Concerning economic days: {summary['concerning_economic_days']}")
+        print(f"Emergency triggers: {summary['emergency_triggers']}")
+        print(f"Highest emergency level: {summary['highest_emergency_level']}")
 
-    elif args.command == 'check-emergency' or args.check_emergency:
+    elif command == 'check-emergency' or args.check_emergency:
         should_trigger = collector.should_trigger_emergency_analysis()
         if should_trigger:
             print(" EMERGENCY ANALYSIS RECOMMENDED")

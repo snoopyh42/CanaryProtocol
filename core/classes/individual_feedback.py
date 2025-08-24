@@ -178,14 +178,9 @@ class IndividualFeedbackSystem(BaseDBClass):
         ai_overall_urgency = 5  # Default value
         
         print(f"🤖 AI's Overall Digest Urgency: {ai_overall_urgency}/10")
-        print(
-            f"📰 Found {
-                len(unrated_headlines)} unprocessed articles (out of {
-                len(headlines)} total)")
+        print(f"📰 Found {len(unrated_headlines)} unprocessed articles (out of {len(headlines)} total)")
         if already_processed:
-            print(
-                f"✅ Already processed: {
-                    len(already_processed)} articles ({rated_count} rated, {irrelevant_count} irrelevant)")
+            print(f"✅ Already processed: {len(already_processed)} articles ({rated_count} rated, {irrelevant_count} irrelevant)")
         print("=" * 60)
 
         rated_count = 0

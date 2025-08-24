@@ -236,9 +236,7 @@ if __name__ == "__main__":
     print("🔧 Configuration Test")
     print("====================")
     print(f"Learning enabled: {config.get('system.learning_enabled')}")
-    print(
-        f"Urgent score threshold: {
-            config.get('system.urgent_analysis_score')}")
+    print(f"Urgent score threshold: {config.get('system.urgent_analysis_score')}")
     print(f"News sources: {len(config.get('monitoring.news_sources', []))}")
     print(f"Model: {config.get('intelligence.model')}")
 

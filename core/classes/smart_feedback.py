@@ -279,8 +279,13 @@ class FeedbackSystem(BaseDBClass):
         cursor = conn.cursor()
 
         # Get total feedback count from user_feedback table
-        cursor.execute('SELECT COUNT(*) FROM user_feedback')
-        total_feedback_count = cursor.fetchone()[0] or 0
+        cursor.execute('SELECT COUNT(*) FROM user_feedback WHERE feedback_type = "accurate"')
+        total_accurate_count = cursor.fetchone()[0] or 0
+
+        cursor.execute('SELECT COUNT(*) FROM user_feedback WHERE feedback_type = "inaccurate"')
+        total_inaccurate_count = cursor.fetchone()[0] or 0
+
+        total_feedback_count = total_accurate_count + total_inaccurate_count
 
         # Accuracy trends from prediction_tracking
         cursor.execute('''

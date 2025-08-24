@@ -489,18 +489,12 @@ def main():
         print("=" * 40)
         print(f"Period: {summary['collection_period']}")
         print(f"Days collected: {summary['days_collected']}")
-        print(
-            f"Total urgency keywords found: {
-                summary['total_urgency_keywords']}")
+        print(f"Total urgency keywords found: {summary['total_urgency_keywords']}")
         print(f"Max VIX level: {summary['max_vix_level']:.1f}")
-        print(
-            f"Concerning economic days: {
-                summary['concerning_economic_days']}")
+        print(f"Concerning economic days: {summary['concerning_economic_days']}")
         print(f"Emergency triggers: {summary['emergency_triggers']}")
         if summary['highest_emergency_level'] > 0:
-            print(
-                f"⚠️  Highest emergency level: {
-                    summary['highest_emergency_level']}")
+            print(f"⚠️  Highest emergency level: {summary['highest_emergency_level']}")
 
     elif args.check_emergency:
         should_trigger = collector.should_trigger_emergency_analysis()

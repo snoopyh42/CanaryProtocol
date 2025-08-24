@@ -130,9 +130,7 @@ class AdaptiveIntelligence(BaseDBClass):
             conn.close()
             return
 
-        print(
-            f"🧠 Learning from {
-                len(article_feedback)} individual article ratings...")
+        print(f"🧠 Learning from {len(article_feedback)} individual article ratings...")
 
         for title, source, user_rating, ai_rating, feedback_type, comments, url in article_feedback:
             self._process_article_feedback(
@@ -154,9 +152,7 @@ class AdaptiveIntelligence(BaseDBClass):
         irrelevant_articles = cursor.fetchall()
 
         if irrelevant_articles:
-            print(
-                f"🧠 Learning irrelevant patterns from {
-                    len(irrelevant_articles)} articles...")
+            print(f"🧠 Learning irrelevant patterns from {len(irrelevant_articles)} articles...")
             for title, source, url in irrelevant_articles:
                 self._process_irrelevant_article(title, source, cursor)
 

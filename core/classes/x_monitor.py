@@ -172,9 +172,7 @@ class XMonitor:
         return {
             'political_trends': political_trends,
             'economic_trends': economic_trends,
-            'analysis_period': f"{
-                start_date.strftime('%Y-%m-%d')} to {
-                end_date.strftime('%Y-%m-%d')}",
+            'analysis_period': f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
             'collection_time': datetime.now().isoformat()}
 
     def _analyze_keyword_trends(
@@ -193,9 +191,7 @@ class XMonitor:
 
         # Very conservative approach - only analyze 1-2 keywords per category
         limited_keywords = keywords[:2] if len(keywords) > 2 else keywords
-        print(
-            f"🔍 Analyzing {
-                len(limited_keywords)} {category} keywords (rate limit conservation)")
+        print(f"🔍 Analyzing {len(limited_keywords)} {category} keywords (rate limit conservation)")
 
         for i, keyword in enumerate(limited_keywords):
             try:
@@ -211,11 +207,7 @@ class XMonitor:
                     keyword, start_date, end_date)
                 if trend_data:
                     trends[keyword] = trend_data
-                    print(
-                        f"   ✅ {keyword}: {
-                            trend_data.get(
-                                'tweet_count',
-                                0)} tweets")
+                    print(f"   ✅ {keyword}: {trend_data.get('tweet_count', 0)} tweets")
                 else:
                     print(f"   ⚠️  {keyword}: No data available")
                     # If we get no data, it's likely rate limited, so stop
@@ -247,9 +239,7 @@ class XMonitor:
                     try:
                         reset_timestamp = int(reset_time)
                         wait_time = reset_timestamp - int(time.time())
-                        print(
-                            f"⏰ Rate limited. Reset in {wait_time} seconds ({
-                                wait_time // 60} minutes)")
+                        print(f"⏰ Rate limited. Reset in {wait_time} seconds ({wait_time // 60} minutes)")
                     except BaseException:
                         print("⏰ Rate limited. Unknown reset time")
                 return False
@@ -565,16 +555,12 @@ class XMonitor:
             if data.get(
                 'engagement_score',
                     0) > 50:  # High engagement threshold
-                viral_indicators.append(
-                    f"{keyword}: {
-                        data['engagement_score']} engagement")
+                viral_indicators.append(f"{keyword}: {data['engagement_score']} engagement")
 
         # Check economic trends for viral content
         for keyword, data in economic_trends.items():
             if data.get('engagement_score', 0) > 50:
-                viral_indicators.append(
-                    f"{keyword}: {
-                        data['engagement_score']} engagement")
+                viral_indicators.append(f"{keyword}: {data['engagement_score']} engagement")
 
         # Check notable account activity
         if account_activity:
@@ -608,8 +594,7 @@ class XMonitor:
                 total_tweets += data.get('tweet_count', 0)
 
         avg_engagement = total_engagement / max(total_tweets, 1)
-        return f"Avg engagement: {
-            avg_engagement:.1f}, Total tweets: {total_tweets}"
+        return f"Avg engagement: {avg_engagement:.1f}, Total tweets: {total_tweets}"
 
     def _calculate_urgency_score(
             self,
@@ -695,10 +680,7 @@ class XMonitor:
             if summary_parts:
                 final_summary = "📱 **Social Media Trends Analysis (Past 7 Days)**\n\n" + "\n".join(
                     summary_parts)
-                final_summary += f"\n\n📊 *Analysis Period: {
-                    trends_data.get(
-                        'analysis_period',
-                        'Past 7 days')}*"
+                final_summary += f"\n\n📊 *Analysis Period: {trends_data.get('analysis_period', 'Past 7 days')}*"
                 return final_summary
             else:
                 return self._generate_minimal_summary()
@@ -783,12 +765,7 @@ class XMonitor:
         return {
             'political_trends': {},
             'economic_trends': {},
-            'analysis_period': f"{
-                (
-                    datetime.now() -
-                    timedelta(
-                        days=7)).strftime('%Y-%m-%d')} to {
-                datetime.now().strftime('%Y-%m-%d')}",
+            'analysis_period': f"{(datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')}",
             'collection_time': datetime.now().isoformat(),
             'status': 'limited_data',
             'message': 'Social media analysis limited due to API constraints'}

@@ -334,11 +334,7 @@ class PublicSocialMonitor:
                 engagement = trend['score'] + trend['comments']
                 title = trend['title'][:80] + \
                     "..." if len(trend['title']) > 80 else trend['title']
-                summary_parts.append(
-                    f"  {
-                        i +
-                        1}. {title} ({
-                        engagement:,        } engagement)")
+                summary_parts.append(f"  {i + 1}. {title} ({engagement:,} engagement)")
 
         # Economic trends summary
         economic_trends = analysis.get('reddit_economic_trends', [])
@@ -349,11 +345,7 @@ class PublicSocialMonitor:
                 engagement = trend['score'] + trend['comments']
                 title = trend['title'][:80] + \
                     "..." if len(trend['title']) > 80 else trend['title']
-                summary_parts.append(
-                    f"  {
-                        i +
-                        1}. {title} ({
-                        engagement:,        } engagement)")
+                summary_parts.append(f"  {i + 1}. {title} ({engagement:,} engagement)")
 
         # Social media mention indicators
         social_mentions = analysis.get('news_social_mentions', [])
@@ -373,8 +365,7 @@ class PublicSocialMonitor:
 
         final_summary = "📊 **Public Social Media Analysis (Past 7 Days)**\n\n" + "\n".join(
             summary_parts)
-        final_summary += f"\n\n📅 *Analysis Date: {
-            datetime.now().strftime('%Y-%m-%d %H:%M')}*"
+        final_summary += f"\n\n📅 *Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}*"
 
         return final_summary
 

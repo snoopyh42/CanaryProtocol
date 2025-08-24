@@ -16,7 +16,7 @@ echo ""
 
 # Learning intelligence
 echo "🎯 ADAPTIVE INTELLIGENCE:"
-./canary dashboard
+python3 core/classes/adaptive_intelligence.py
 echo ""
 
 # User feedback summary

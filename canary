@@ -141,16 +141,19 @@ case "$1" in
     "archive"|"data-archive")
         echo "📦 Running data archival..."
         shift  # Remove 'archive' from arguments
-        python3 core/data_archival.py "$@"
+        python3 core/classes/data_archival.py "$@"
         ;;
     "migrate"|"db-migrate")
         echo "🔧 Managing database migrations..."
         shift  # Remove 'migrate' from arguments
-        python3 core/database_migrations.py "$@"
+        python3 core/classes/database_migrations.py "$@"
         ;;
     "ab-test"|"ab-testing")
         echo "🧪 Running A/B testing framework..."
         python3 core/ab_testing.py "$@"
+        ;;
+    "collect")
+        python3 core/classes/daily_silent_collector.py "$@"
         ;;
     "restore")
         echo "🔄 Data Restore Manager..."
@@ -213,7 +216,7 @@ case "$1" in
         echo "  Database: $([ -f data/canary_protocol.db ] && echo "✅ Active" || echo "❌ Missing")"
         echo "  Config: $([ -f config/config.yaml ] && echo "✅ Found" || echo "❌ Missing")"
         echo "  Logs: $([ -d logs ] && echo "✅ Directory exists" || echo "❌ Missing")"
-        echo "  Learning: $([ -f data/feedback_log.txt ] && echo "✅ Active" || echo "📝 No feedback yet")"
+        echo "  Learning: $([ $(sqlite3 data/canary_protocol.db "SELECT COUNT(*) FROM individual_article_feedback;" 2>/dev/null || echo "0") -gt 0 ] && echo "✅ Active ($(sqlite3 data/canary_protocol.db "SELECT COUNT(*) FROM individual_article_feedback;" 2>/dev/null) entries)" || echo "📝 No feedback yet")"
         echo ""
         echo "📈 Recent Activity:"
         echo "  Last analysis: $(sqlite3 data/canary_protocol.db "SELECT MAX(date) FROM weekly_digests;" 2>/dev/null || echo "No analysis run yet")"

@@ -74,10 +74,10 @@ main() {
     # Add the two cron jobs with dynamic paths
     {
         echo "# Canary Protocol - Daily Silent Data Collection"
-        echo "0 8 * * * cd $CANARY_ROOT && python3 core/classes/daily_silent_collector.py >> logs/canary_cron.log 2>&1"
+        echo "0 8 * * * cd $CANARY_ROOT && ./canary collect >> logs/canary_cron.log 2>&1"
         echo ""
         echo "# Canary Protocol - Weekly Intelligent Digest"
-        echo "0 9 * * 1 cd $CANARY_ROOT && python3 core/canary_protocol.py >> logs/canary_cron.log 2>&1"
+        echo "0 9 * * 1 cd $CANARY_ROOT && ./canary run >> logs/canary_cron.log 2>&1"
     } >> temp_cron_final
     
     # Install the final crontab

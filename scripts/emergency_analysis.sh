@@ -10,13 +10,13 @@ cd "$SCRIPT_DIR/.."
 
 # Show recent emergency triggers
 echo "Recent emergency triggers:"
-python3 core/classes/daily_silent_collector.py --check-emergency
+./canary collect --check-emergency
 
 echo ""
 echo "Running immediate analysis..."
 
 # Run immediate analysis with verbose flag (emergency flag not supported)
-python3 core/canary_protocol.py --verbose
+./canary run --verbose
 
 echo ""
 echo "Emergency analysis completed."

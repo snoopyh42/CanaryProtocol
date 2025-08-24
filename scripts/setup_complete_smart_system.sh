@@ -69,13 +69,13 @@ export PATH="/home/ahansen/CanaryProtocol/venv/bin:$PATH"
 echo "$(date): Starting daily collection" >> logs/daily_collection.log
 
 # Run the collector
-python3 core/classes/daily_silent_collector.py >> logs/daily_collection.log 2>&1
+./canary collect >> logs/daily_collection.log 2>&1
 
 # Check for emergency triggers
-if python3 core/classes/daily_silent_collector.py --check-emergency | grep -q "EMERGENCY"; then
+if ./canary collect --check-emergency | grep -q "EMERGENCY"; then
     echo "$(date): Emergency trigger detected" >> logs/daily_collection.log
     # Optional: Send emergency notification
-    # python3 core/canary_protocol.py --emergency >> logs/daily_collection.log 2>&1
+    # ./canary run --emergency >> logs/daily_collection.log 2>&1
 fi
 
 echo "$(date): Daily collection completed" >> logs/daily_collection.log
@@ -96,10 +96,10 @@ echo "$(date): Starting weekly intelligent digest" >> logs/canary_cron.log
 
 # Show weekly data summary
 echo "$(date): Weekly data collection summary:" >> logs/canary_cron.log
-python3 core/classes/daily_silent_collector.py --summary >> logs/canary_cron.log 2>&1
+./canary collect --summary >> logs/canary_cron.log 2>&1
 
 # Run the full intelligent analysis
-python3 core/canary_protocol.py >> logs/canary_cron.log 2>&1
+./canary run >> logs/canary_cron.log 2>&1
 
 echo "$(date): Weekly intelligent digest completed" >> logs/canary_cron.log
 EOF
@@ -132,10 +132,10 @@ else
     # Add daily collection (8 AM every day, silent)
     {
         echo "# Canary Protocol - Daily Silent Data Collection"
-        echo "0 8 * * * cd $CANARY_ROOT && python3 core/classes/daily_silent_collector.py >> logs/canary_cron.log 2>&1"
+        echo "0 8 * * * cd $CANARY_ROOT && ./canary collect >> logs/canary_cron.log 2>&1"
         echo ""
         echo "# Canary Protocol - Weekly Intelligent Digest"
-        echo "0 9 * * 1 cd $CANARY_ROOT && python3 core/canary_protocol.py >> logs/canary_cron.log 2>&1"
+        echo "0 9 * * 1 cd $CANARY_ROOT && ./canary run >> logs/canary_cron.log 2>&1"
     } >> temp_cron_final
     
     # Install the new crontab
@@ -165,13 +165,13 @@ export PATH="/home/ahansen/CanaryProtocol/venv/bin:$PATH"
 
 # Show recent emergency triggers
 echo "Recent emergency triggers:"
-python3 core/classes/daily_silent_collector.py --check-emergency
+./canary collect --check-emergency
 
 echo ""
 echo "Running immediate analysis..."
 
 # Run immediate analysis with emergency flag
-python3 core/canary_protocol.py --emergency --verbose
+./canary run --emergency --verbose
 
 echo ""
 echo "Emergency analysis completed."
@@ -192,22 +192,22 @@ cd /home/ahansen/CanaryProtocol
 
 # Daily collection summary
 echo "📊 RECENT DATA COLLECTION:"
-python3 core/classes/daily_silent_collector.py --summary
+./canary collect --summary
 echo ""
 
 # Learning intelligence
 echo "🎯 ADAPTIVE INTELLIGENCE:"
-python3 core/adaptive_intelligence.py
+./canary dashboard
 echo ""
 
 # User feedback summary
 echo "📝 USER FEEDBACK:"
-python3 core/smart_feedback.py --summary
+./canary feedback-summary
 echo ""
 
 # Recent emergency triggers
 echo "🚨 EMERGENCY TRIGGERS:"
-python3 core/classes/daily_silent_collector.py --check-emergency
+./canary collect --check-emergency
 echo ""
 
 # Recent logs
@@ -247,7 +247,7 @@ print(feedback.get_feedback_summary())
 echo ""
 echo "💭 Feedback Reminder:"
 echo "If you've read recent digests, consider providing feedback:"
-echo "  python3 core/smart_feedback.py --feedback"
+echo "  ./canary feedback"
 EOF
 
 chmod +x scripts/daily_learning_check.sh
@@ -294,7 +294,7 @@ chmod +x scripts/backup_learning_data.sh
 # Test the system
 echo ""
 echo "🧪 Testing the smart system..."
-python3 core/classes/daily_silent_collector.py --verbose
+./canary collect --verbose
 
 echo ""
 echo "✅ COMPLETE SMART CANARY PROTOCOL SETUP FINISHED!"
@@ -311,7 +311,7 @@ echo "   scripts/learning_dashboard.sh      - View complete learning status"
 echo "   scripts/emergency_analysis.sh      - Run emergency analysis"
 echo "   scripts/daily_learning_check.sh    - Quick learning progress check"
 echo "   scripts/backup_learning_data.sh    - Backup all learning data"
-echo "   python3 core/smart_feedback.py --feedback - Provide user feedback"
+echo "   ./canary feedback - Provide user feedback"
 echo ""
 echo "📊 Log Files:"
 echo "   logs/daily_collection.log         - Daily collection activity"

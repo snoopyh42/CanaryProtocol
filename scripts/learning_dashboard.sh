@@ -11,22 +11,22 @@ cd "$SCRIPT_DIR/.."
 
 # Daily collection summary
 echo "📊 RECENT DATA COLLECTION:"
-python3 core/classes/daily_silent_collector.py --summary
+./canary collect --summary
 echo ""
 
 # Learning intelligence
 echo "🎯 ADAPTIVE INTELLIGENCE:"
-python3 core/classes/adaptive_intelligence.py
+./canary dashboard
 echo ""
 
 # User feedback summary
 echo "📝 USER FEEDBACK:"
-python3 core/classes/smart_feedback.py --summary
+./canary feedback-summary
 echo ""
 
 # Recent emergency triggers
 echo "🚨 EMERGENCY TRIGGERS:"
-python3 core/classes/daily_silent_collector.py --check-emergency
+./canary collect --check-emergency
 echo ""
 
 # Recent logs

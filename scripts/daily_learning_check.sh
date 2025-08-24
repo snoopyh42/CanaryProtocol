@@ -22,4 +22,4 @@ print(feedback.get_feedback_summary())
 echo ""
 echo "💭 Feedback Reminder:"
 echo "If you've read recent digests, consider providing feedback:"
-echo "  python3 core/smart_feedback.py --feedback"
+echo "  ./canary feedback"

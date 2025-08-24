@@ -467,6 +467,11 @@ def main():
 
     parser = argparse.ArgumentParser(description='Daily Silent Data Collector')
     parser.add_argument(
+        'command',
+        nargs='?',
+        default='collect',
+        help='Command to run (collect, summary, check-emergency)')
+    parser.add_argument(
         '--verbose',
         action='store_true',
         help='Show collection details')
@@ -489,28 +494,21 @@ def main():
         print("=" * 40)
         print(f"Period: {summary['collection_period']}")
         print(f"Days collected: {summary['days_collected']}")
-        print(f"Total urgency keywords found: {summary['total_urgency_keywords']}")
-        print(f"Max VIX level: {summary['max_vix_level']:.1f}")
-        print(f"Concerning economic days: {summary['concerning_economic_days']}")
-        print(f"Emergency triggers: {summary['emergency_triggers']}")
-        if summary['highest_emergency_level'] > 0:
-            print(f"⚠️  Highest emergency level: {summary['highest_emergency_level']}")
 
-    elif args.check_emergency:
+    elif args.command == 'check-emergency' or args.check_emergency:
         should_trigger = collector.should_trigger_emergency_analysis()
         if should_trigger:
-            print("🚨 EMERGENCY ANALYSIS RECOMMENDED")
+            print(" EMERGENCY ANALYSIS RECOMMENDED")
             print("High-urgency triggers detected in the last 24 hours.")
             print("Consider running: python3 canary_protocol.py --emergency")
         else:
-            print("✅ No emergency triggers detected")
+            print(" No emergency triggers detected")
 
-    else:
+    else:  # Default to 'collect' command
         emergency_level = collector.collect_daily_data(verbose=args.verbose)
         if emergency_level >= 8 and not args.verbose:
-            print(f"🚨 Emergency trigger detected: Level {emergency_level}")
+            print(f" Emergency trigger detected: Level {emergency_level}")
             print("Consider running immediate analysis.")
-
 
 if __name__ == "__main__":
     main()

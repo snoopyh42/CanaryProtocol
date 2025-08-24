@@ -249,10 +249,7 @@ Headlines to analyze:
             positive_feedback = [f for f in all_feedback if f.startswith("✅")]
             warning_feedback = [f for f in all_feedback if f.startswith("⚠️")]
 
-            print(
-                f"Positive: {
-                    len(positive_feedback)} | Warnings: {
-                    len(warning_feedback)}")
+            print(f"Positive: {len(positive_feedback)} | Warnings: {len(warning_feedback)}")
 
         # Determine winner
         if results_summary:

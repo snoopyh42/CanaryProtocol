@@ -5,7 +5,7 @@
 
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+cd "$SCRIPT_DIR" || exit 1
 
 # Check if no arguments provided - launch TUI
 if [ $# -eq 0 ]; then
@@ -29,21 +29,21 @@ case "$1" in
         ;;
     "feedback")
         echo "📝 Starting Smart Canary Protocol feedback..."
-        python3 core/smart_feedback.py
+        python3 core/classes/smart_feedback.py
         ;;
     "feedback-individual"|"articles")
         echo "📰 Starting individual article feedback..."
-        python3 core/individual_feedback.py
+        python3 core/classes/individual_feedback.py
         ;;
     "feedback-summary")
         echo "📊 Feedback Summary:"
         echo "==================="
         echo ""
         echo "📝 Digest-level feedback:"
-        python3 core/smart_feedback.py --summary
+        python3 core/classes/smart_feedback.py --summary
         echo ""
         echo "📰 Individual article feedback:"
-        python3 core/individual_feedback.py --summary
+        python3 core/classes/individual_feedback.py --summary
         ;;
     "feedback-clear")
         echo "🗑️  Clear Feedback Data"
@@ -55,22 +55,22 @@ case "$1" in
         echo "3) ALL feedback data"
         echo "4) Cancel"
         echo ""
-        read -p "Enter choice (1-4): " choice
+        read -r -p "Enter choice (1-4): " choice
         
         case $choice in
             1)
                 echo "Clearing digest-level feedback..."
-                python3 core/smart_feedback.py --clear
+                python3 core/classes/smart_feedback.py --clear
                 ;;
             2)
                 echo "Clearing individual article feedback..."
-                python3 core/individual_feedback.py --clear
+                python3 core/classes/individual_feedback.py --clear
                 ;;
             3)
                 echo "Clearing ALL feedback data..."
-                python3 core/smart_feedback.py --clear
+                python3 core/classes/smart_feedback.py --clear
                 echo ""
-                python3 core/individual_feedback.py --clear
+                python3 core/classes/individual_feedback.py --clear
                 ;;
             4)
                 echo "❌ Operation cancelled"
@@ -80,9 +80,9 @@ case "$1" in
                 ;;
         esac
         ;;
-    "help"|"--help"|"-h"|"")
+    "help"|"--help"|"-h")
         echo "🧠 Smart Canary Protocol - Command Interface"
-        echo "============================================="
+        echo "=============================================="
         echo ""
         echo "Available commands:"
         echo ""
@@ -92,10 +92,16 @@ case "$1" in
         echo "  ./canary status     - System status overview"
         echo "  ./canary config     - Configuration management"
         echo "  ./canary backup     - Backup all data"
+        echo "  ./canary verify     - Verify backup integrity"
+        echo "  ./canary restore    - Restore from backup"
+        echo "  ./canary archive    - Archive old data"
+        echo "  ./canary migrate    - Manage database migrations"
         echo "  ./canary logs       - View recent system logs"
         echo "  ./canary cron-reset - Reset cron jobs (fix duplicates)"
+        echo "  ./canary uninstall  - Uninstall Smart Canary Protocol"
         echo ""
         echo "🧪 Analysis & Testing:"
+        echo "  ./canary run        - Execute main canary protocol"
         echo "  ./canary test       - Run in test mode"
         echo "  ./canary emergency  - Emergency analysis"
         echo ""
@@ -111,6 +117,11 @@ case "$1" in
         echo "  ./canary status         - Check system health"
         echo ""
         ;;
+    "run")
+        echo "🔄 Running main Canary Protocol..."
+        shift  # Remove 'run' from arguments
+        python3 core/canary_protocol.py "$@"
+        ;;
     "emergency")
         echo "🚨 Running emergency analysis..."
         scripts/emergency_analysis.sh
@@ -121,7 +132,37 @@ case "$1" in
         ;;
     "backup")
         echo "💾 Creating system backup..."
-        scripts/backup_system.sh
+        scripts/backup_learning_data.sh
+        ;;
+    "verify"|"verify-backup")
+        echo "🔍 Verifying backup integrity..."
+        python3 core/classes/backup_verification.py --verify
+        ;;
+    "archive"|"data-archive")
+        echo "📦 Running data archival..."
+        shift  # Remove 'archive' from arguments
+        python3 core/data_archival.py "$@"
+        ;;
+    "migrate"|"db-migrate")
+        echo "🔧 Managing database migrations..."
+        shift  # Remove 'migrate' from arguments
+        python3 core/database_migrations.py "$@"
+        ;;
+    "ab-test"|"ab-testing")
+        echo "🧪 Running A/B testing framework..."
+        python3 core/ab_testing.py "$@"
+        ;;
+    "restore")
+        echo "🔄 Data Restore Manager..."
+        if [ "$2" = "list" ]; then
+            python3 core/classes/data_restore.py --list
+        elif [ "$2" = "history" ]; then
+            python3 core/classes/data_restore.py --history
+        elif [ -n "$3" ] && [ "$2" = "file" ]; then
+            python3 core/classes/data_restore.py --file "$3"
+        else
+            python3 core/classes/data_restore.py --interactive
+        fi
         ;;
     "logs")
         echo "📋 Smart Canary Protocol - Recent Logs"
@@ -158,6 +199,12 @@ case "$1" in
         (crontab -l 2>/dev/null; echo "0 8 * * * cd $SCRIPT_DIR && python3 core/canary_protocol.py >> logs/canary_cron.log 2>&1") | crontab -
         echo "✅ Cron jobs reset successfully"
         ;;
+    "uninstall")
+        echo "🗑️  Smart Canary Protocol Uninstaller"
+        echo "===================================="
+        echo ""
+        scripts/uninstall_canary_protocol.sh
+        ;;
     "status")
         echo "📊 Smart Canary Protocol - System Status"
         echo "========================================"
@@ -169,18 +216,18 @@ case "$1" in
         echo "  Learning: $([ -f data/feedback_log.txt ] && echo "✅ Active" || echo "📝 No feedback yet")"
         echo ""
         echo "📈 Recent Activity:"
-        echo "  Last analysis: $([ -f logs/analysis.log ] && tail -n 1 logs/analysis.log | cut -d' ' -f1-2 || echo "No analysis run yet")"
-        echo "  Last cron run: $([ -f logs/canary_cron.log ] && tail -n 1 logs/canary_cron.log | grep "Analysis completed" | cut -d' ' -f1-2 | tail -n 1 || echo "No cron runs yet")"
-        echo "  Database entries: $([ -f data/canary_protocol.db ] && sqlite3 data/canary_protocol.db "SELECT COUNT(*) FROM news_analysis;" 2>/dev/null || echo "0")"
-        echo "  Learning entries: $([ -f data/feedback_log.txt ] && wc -l < data/feedback_log.txt || echo "0")"
+        echo "  Last analysis: $(sqlite3 data/canary_protocol.db "SELECT MAX(date) FROM weekly_digests;" 2>/dev/null || echo "No analysis run yet")"
+        echo "  Last cron run: $(tail -n 1 logs/cron_activity.log 2>/dev/null | cut -d: -f1-2 || echo "No cron activity")"
+        echo "  Database entries: $(sqlite3 data/canary_protocol.db "SELECT COUNT(*) FROM weekly_digests;" 2>/dev/null || echo "0")"
+        echo "  Learning entries: $(sqlite3 data/canary_protocol.db "SELECT COUNT(*) FROM individual_article_feedback;" 2>/dev/null || echo "0")"
         echo ""
         echo "📁 Storage Usage:"
         echo "  Total data: $(du -sh data/ 2>/dev/null | cut -f1 || echo "No data directory")"
         echo "  Total logs: $(du -sh logs/ 2>/dev/null | cut -f1 || echo "No logs directory")"
-        echo "⚙️  Config files: $(ls config/ 2>/dev/null | wc -l) files"
+        echo "⚙️  Config files: $(find config/ -maxdepth 1 -type f 2>/dev/null | wc -l) files"
         echo ""
         echo "📈 Quick Intelligence Check:"
-        python3 core/adaptive_intelligence.py 2>/dev/null | head -n 15 || echo "Intelligence system not ready"
+        python3 core/classes/adaptive_intelligence.py 2>/dev/null | head -n 15 || echo "Intelligence system not ready"
         ;;
     "config")
         echo "⚙️  Configuration Management:"
@@ -192,7 +239,7 @@ case "$1" in
             python3 -c "
 import sys
 sys.path.append('core')
-from config_loader import get_config
+from classes.config_loader import get_config
 config = get_config()
 print(f'🔧 System Settings:')
 print(f'  Learning enabled: {config.get(\"system.learning_enabled\")}')
@@ -214,7 +261,7 @@ print(f'  Max tokens: {config.get(\"intelligence.max_tokens\")}')
             python3 -c "
 import sys
 sys.path.append('core')
-from config_loader import ConfigLoader
+from classes.config_loader import ConfigLoader
 config = ConfigLoader()
 config.create_example_user_config()
 print('✅ Created config/config_example.yaml')
@@ -225,7 +272,7 @@ print('💡 Copy to config/config.yaml and customize as needed')
             python3 -c "
 import sys
 sys.path.append('core')
-from config_loader import get_config
+from classes.config_loader import get_config
 config = get_config()
 print('✅ Configuration loaded successfully')
 print(f'News sources: {len(config.get(\"monitoring.news_sources\", []))}')
@@ -244,7 +291,7 @@ print(f'Urgency threshold: {config.get(\"system.urgent_analysis_score\")}')
             echo "  config/config_example.yaml  - Example user config"
         fi
         ;;
-    "help"|"--help"|"-h"|"")
+    "")
         echo "🧠 Smart Canary Protocol - Command Interface"
         echo "============================================="
         echo ""
@@ -256,8 +303,10 @@ print(f'Urgency threshold: {config.get(\"system.urgent_analysis_score\")}')
         echo "  ./canary status     - System status overview"
         echo "  ./canary config     - Configuration management"
         echo "  ./canary backup     - Backup all data"
+        echo "  ./canary restore    - Restore from backup"
         echo "  ./canary logs       - View recent system logs"
         echo "  ./canary cron-reset - Reset cron jobs (fix duplicates)"
+        echo "  ./canary uninstall  - Uninstall Smart Canary Protocol"
         echo ""
         echo "🧪 Analysis & Testing:"
         echo "  ./canary test       - Run in test mode"

@@ -24,6 +24,13 @@ def log_info(message: str, log_file: str = "logs/info.log") -> None:
         f.write(f"{datetime.now().isoformat()}: {message}\n")
 
 
+def log_warning(message: str, log_file: str = "logs/warning.log") -> None:
+    """Log warning messages to file with timestamp"""
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    with open(log_file, "a") as f:
+        f.write(f"{datetime.now().isoformat()}: {message}\n")
+
+
 def safe_db_operation(db_path: str, operation_func, *args, **kwargs) -> Any:
     """Safely execute database operations with proper error handling"""
     try:

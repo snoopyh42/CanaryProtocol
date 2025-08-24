@@ -4,27 +4,35 @@ Configuration Loader for Smart Canary Protocol
 Loads and manages YAML configuration files with fallback to defaults
 """
 
-import yaml
 import os
+import yaml
 from typing import Dict, Any
 
 
 class ConfigLoader:
+    _instance = None
+    _config = None
+    
+    def __new__(cls, config_dir="config"):
+        if cls._instance is None:
+            cls._instance = super(ConfigLoader, cls).__new__(cls)
+        return cls._instance
     def __init__(self, config_dir="config"):
-        self.config_dir = config_dir
-        self.defaults_file = os.path.join(config_dir, "config_defaults.yaml")
-        self.user_config_file = os.path.join(config_dir, "config.yaml")
-        self._config = None
-        self.load_config()
+        if self._config is None:
+            self.config_dir = config_dir
+            self.defaults_file = os.path.join(config_dir, "config_defaults.yaml")
+            self.user_config_file = os.path.join(config_dir, "config.yaml")
+            self.load_config()
 
     def load_config(self) -> Dict[str, Any]:
         """Load configuration with user overrides falling back to defaults"""
+        if self._config is not None:
+            return self._config
+            
         # Load defaults
         defaults = self._load_yaml_file(self.defaults_file)
         if not defaults:
-            print(
-                f"⚠️  Warning: Could not load default config from {
-                    self.defaults_file}")
+            print(f"⚠️  Warning: Could not load default config from {self.defaults_file}")
             defaults = self._get_hardcoded_defaults()
 
         # Load user overrides if they exist

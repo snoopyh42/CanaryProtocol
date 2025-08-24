@@ -17,7 +17,10 @@
 ./canary emergency
 
 # Database integrity check
-python3 core/backup_verification.py --integrity-only data/canary_protocol.db
+./canary verify
+
+# Run comprehensive test suite
+python3 tests/test_comprehensive.py
 ```
 
 ### **Log Locations**
@@ -123,8 +126,9 @@ sudo systemctl stop canary.timer
 # Backup current database
 cp data/canary_protocol.db data/canary_protocol.db.corrupted
 
-# Restore from latest backup
-cp data/backups/$(ls -t data/backups/*.db | head -1) data/canary_protocol.db
+# Use interactive restore system
+./canary restore
+# Select latest verified backup from list
 
 # Verify restoration
 ./canary status
@@ -387,6 +391,97 @@ except yaml.YAMLError as e:
 2. Use online YAML validator
 3. Restore from backup: `cp config/config.yaml.backup config/config.yaml`
 
+## 🧪 Test Suite Troubleshooting
+
+### **Test Failures**
+
+#### **Problem**: Comprehensive Test Suite Failures
+```
+Error: Test failed - backup verification
+```
+
+**Diagnosis:**
+```bash
+# Run tests with verbose output
+python3 tests/test_comprehensive.py --verbose
+
+# Check test environment isolation
+ls -la /tmp/canary_test_*
+```
+
+**Solution:**
+```bash
+# Clean test artifacts
+rm -rf /tmp/canary_test_*
+
+# Ensure proper permissions
+chmod +x scripts/*.sh
+
+# Run individual test components
+python3 -c "from tests.test_comprehensive import *; test_core_imports()"
+```
+
+#### **Problem**: Import Path Errors in Tests
+```
+ModuleNotFoundError: No module named 'core.classes'
+```
+
+**Solution:**
+```bash
+# Verify Python path in tests
+export PYTHONPATH="$PWD:$PYTHONPATH"
+python3 tests/test_comprehensive.py
+
+# Check module structure
+find core/ -name "*.py" | head -10
+```
+
+### **Backup System Troubleshooting**
+
+#### **Problem**: SHA256 Verification Failures
+```
+Error: Checksum mismatch for backup file
+```
+
+**Diagnosis:**
+```bash
+# Check backup integrity manually
+./canary verify
+
+# List backup files with checksums
+ls -la data/backups/*.sha256
+```
+
+**Solution:**
+```bash
+# Create new verified backup
+./canary backup
+
+# Verify new backup
+./canary verify
+```
+
+#### **Problem**: Restore System Issues
+```
+Error: Failed to extract backup bundle
+```
+
+**Diagnosis:**
+```bash
+# Test tar.gz extraction manually
+tar -tzf data/backups/latest_backup.tar.gz
+
+# Check backup bundle structure
+./canary restore list
+```
+
+**Solution:**
+```bash
+# Use interactive restore with safety backup
+./canary restore
+# Follow prompts for safe restoration
+```
+
 ## 🔧 Diagnostic Tools
 
 ### **System Health Check**
@@ -406,35 +501,53 @@ echo "2. Database Check:"
 sqlite3 data/canary_protocol.db "SELECT COUNT(*) as total_digests FROM weekly_digests;"
 echo
 
-echo "3. Recent Logs (last 10 errors):"
+echo "3. Test Suite Validation:"
+python3 tests/test_comprehensive.py 2>&1 | grep -E "(PASSED|FAILED|ERROR)"
+echo
+
+echo "4. Backup System Check:"
+./canary verify 2>&1 | tail -5
+echo
+
+echo "5. Recent Logs (last 10 errors):"
 grep -i error logs/*.log | tail -10
 echo
 
-echo "4. Disk Usage:"
+echo "6. Disk Usage:"
 df -h | grep -E "(Filesystem|/home)"
 echo
 
-echo "5. Memory Usage:"
+echo "7. Memory Usage:"
 free -h
 echo
 
-echo "6. Process Check:"
+echo "8. Process Check:"
 ps aux | grep -E "(python3.*canary|cron)" | grep -v grep
 echo
 
-echo "7. Network Connectivity:"
+echo "9. Network Connectivity:"
 curl -s -o /dev/null -w "%{http_code}" https://api.openai.com/v1/models || echo "OpenAI API unreachable"
 echo
 
-echo "8. Configuration Validation:"
+echo "10. Configuration Validation:"
 python3 -c "
 try:
-    from core.config_loader import load_config
+    from core.functions.utils import load_config
     config = load_config()
     print('Configuration loaded successfully')
 except Exception as e:
     print(f'Configuration error: {e}')
 "
+echo
+
+echo "11. Shell Script Validation:"
+for script in scripts/*.sh; do
+    if bash -n "$script" 2>/dev/null; then
+        echo "✓ $script syntax OK"
+    else
+        echo "✗ $script syntax ERROR"
+    fi
+done
 ```
 
 ### **Performance Monitor**
@@ -477,8 +590,9 @@ pkill -f "python3.*canary"
 # 2. Backup current state
 cp -r data/ data_backup_$(date +%Y%m%d_%H%M%S)
 
-# 3. Restore from known good backup
-cp data/backups/latest_verified.db data/canary_protocol.db
+# 3. Use interactive restore system
+./canary restore
+# Select latest verified backup from list
 
 # 4. Verify restoration
 ./canary status
@@ -492,18 +606,23 @@ sudo systemctl start canary.timer
 
 ### **Database Emergency Recovery**
 ```bash
-# 1. Create emergency backup
-sqlite3 data/canary_protocol.db ".backup emergency_backup.db"
+# 1. Create emergency backup using backup system
+./canary backup
 
 # 2. Export critical data
 sqlite3 data/canary_protocol.db ".mode csv" ".output critical_data.csv" "SELECT * FROM weekly_digests;"
 
-# 3. Recreate database from scratch
-rm data/canary_protocol.db
-./canary setup
+# 3. Use restore system for recovery
+./canary restore
+# Select appropriate backup from list
 
-# 4. Import critical data if needed
-# (Manual process based on exported CSV)
+# 4. Verify recovery with test suite
+python3 tests/test_comprehensive.py
+
+# 5. If complete rebuild needed:
+# rm data/canary_protocol.db
+# ./canary setup
+# Import critical data if needed
 ```
 
 ## 📞 Escalation Procedures
@@ -535,7 +654,8 @@ rm data/canary_protocol.db
 - [ ] Process status: `ps aux | grep canary`
 
 ### **Weekly Checks**
-- [ ] Backup verification: `python3 core/backup_verification.py --verify`
+- [ ] Backup verification: `./canary verify`
+- [ ] Run comprehensive tests: `python3 tests/test_comprehensive.py`
 - [ ] Log rotation: Check log sizes
 - [ ] Performance review: Run performance monitor
 - [ ] Configuration validation: Test configuration loading

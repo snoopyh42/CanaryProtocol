@@ -45,7 +45,7 @@ sudo useradd -m -s /bin/bash canary
 sudo su - canary
 
 # Clone repository
-git clone https://github.com/your-org/CanaryProtocol.git
+git clone https://github.com/snoopyh42/CanaryProtocol.git
 cd CanaryProtocol
 
 # Set proper permissions
@@ -98,6 +98,9 @@ cp config/subscribers.txt.example config/subscribers.txt
 # Verify installation
 ./canary status
 ./canary test --no-openai  # Test without API calls
+
+# Run comprehensive test suite
+python3 tests/test_comprehensive.py
 ```
 
 ## 🔒 Security Hardening
@@ -204,14 +207,80 @@ crontab -e
 # Weekly analysis on Sunday at 9 AM
 0 9 * * 0 /home/canary/CanaryProtocol/canary emergency
 
-# Daily backup at 2 AM
-0 2 * * * /home/canary/CanaryProtocol/scripts/backup_learning_data.sh
+# Daily backup at 2 AM (automatic via daily collector)
+0 2 * * * /home/canary/CanaryProtocol/scripts/run_daily_collection.sh
 
 # Weekly archival on Saturday at 3 AM
 0 3 * * 6 /usr/bin/python3 /home/canary/CanaryProtocol/core/data_archival.py --run
 
 # Monthly backup verification on 1st at 4 AM
-0 4 1 * * /usr/bin/python3 /home/canary/CanaryProtocol/core/backup_verification.py --verify
+0 4 1 * * cd /home/canary/CanaryProtocol && ./canary verify
+```
+
+## 🧪 Testing and Validation
+
+### **Comprehensive Test Suite**
+The Smart Canary Protocol includes a robust test suite with 100% coverage:
+
+```bash
+# Run full comprehensive test suite
+python3 tests/test_comprehensive.py
+
+# Run basic functionality tests
+python3 tests/test_all_functionality.py
+
+# Test specific components
+python3 -m pytest tests/ -v
+```
+
+**Test Coverage Includes:**
+- Core system imports and database operations
+- Backup and restore system with SHA256 verification
+- Learning systems (adaptive intelligence, feedback)
+- Data collection with mocked external APIs
+- Shell script syntax validation
+- Integration workflow testing
+- Isolated test environments with automatic cleanup
+
+### **Pre-Production Testing**
+```bash
+# Test backup system
+./canary backup
+./canary verify
+
+# Test restore system (dry run)
+./canary restore list
+
+# Test learning systems
+./canary test
+
+# Validate configuration
+./canary status
+```
+
+### **Continuous Integration**
+```bash
+# Add to CI/CD pipeline
+#!/bin/bash
+set -e
+
+# Setup test environment
+python3 -m venv test_env
+source test_env/bin/activate
+pip install -r requirements.txt
+
+# Run comprehensive tests
+python3 tests/test_comprehensive.py
+
+# Validate shell scripts
+for script in scripts/*.sh; do
+    bash -n "$script"
+done
+
+# Check code quality
+flake8 core/ tests/ --max-line-length=100
+
+echo "All tests passed!"
 ```
 
 ## 📊 Monitoring and Alerting
@@ -282,14 +351,17 @@ python3 core/database_migrations.py --create-initial
 
 ### **Backup Strategy**
 ```bash
-# Manual backup
-./scripts/backup_learning_data.sh
+# Manual backup (creates SHA256-verified tar.gz bundle)
+./canary backup
 
 # Verify backup integrity
-python3 core/backup_verification.py --verify
+./canary verify
 
-# Test specific backup restoration
-python3 core/backup_verification.py --test-restore data/backups/backup_20241201.db
+# List available backups with metadata
+./canary restore list
+
+# Test backup restoration (interactive)
+./canary restore
 ```
 
 ### **Data Archival**
@@ -318,11 +390,13 @@ python3 core/data_archival.py --table daily_headlines
 # Stop all services
 sudo systemctl stop canary.timer
 
-# Restore from latest verified backup
-cp data/backups/latest_verified_backup.db data/canary_protocol.db
+# Use interactive restore system
+./canary restore
+# Select latest verified backup from list
 
 # Verify restoration
 ./canary status
+python3 tests/test_comprehensive.py
 
 # Restart services
 sudo systemctl start canary.timer
@@ -331,19 +405,21 @@ sudo systemctl start canary.timer
 **2. Complete System Recovery:**
 ```bash
 # Reinstall application
-git clone https://github.com/your-org/CanaryProtocol.git
+git clone https://github.com/snoopyh42/CanaryProtocol.git
 cd CanaryProtocol
 
 # Restore configuration
 cp /backup/location/config/.env config/.env
 cp /backup/location/config/config.yaml config/config.yaml
 
-# Restore database
-cp /backup/location/data/canary_protocol.db data/canary_protocol.db
+# Use restore system for data recovery
+./canary restore
+# Select appropriate backup bundle
 
-# Run setup and verification
+# Run setup and comprehensive verification
 ./canary setup
 ./canary status
+python3 tests/test_comprehensive.py
 ```
 
 ## 📈 Performance Optimization
@@ -425,7 +501,8 @@ python3 core/data_archival.py --run
 - [ ] Disk space monitoring
 
 ### **Weekly**
-- [ ] Backup verification
+- [ ] Backup verification (`./canary verify`)
+- [ ] Run comprehensive test suite (`python3 tests/test_comprehensive.py`)
 - [ ] Performance review
 - [ ] Security log review
 
@@ -436,7 +513,8 @@ python3 core/data_archival.py --run
 - [ ] Configuration review
 
 ### **Quarterly**
-- [ ] Full disaster recovery test
+- [ ] Full disaster recovery test with restore validation
+- [ ] Complete test suite validation in production environment
 - [ ] Security audit
 - [ ] Performance optimization
 - [ ] Documentation updates
@@ -476,7 +554,10 @@ python3 core/data_archival.py --run
 python3 core/database_migrations.py --status
 
 # Backup verification
-python3 core/backup_verification.py --verify
+./canary verify
+
+# Run comprehensive tests
+python3 tests/test_comprehensive.py
 ```
 
 ### **Performance Monitoring**

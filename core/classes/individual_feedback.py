@@ -7,41 +7,63 @@ Allows users to rate individual articles instead of entire digest
 import sqlite3
 import json
 import sys
-from datetime import datetime
+import os
 import argparse
+from datetime import datetime
+from urllib.parse import urlparse
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-class IndividualFeedbackSystem:
+try:
+    from functions.utils import ensure_directory_exists, safe_db_operation
+except ImportError:
+    # Fallback for when running from different directory
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'functions'))
+    from utils import ensure_directory_exists, safe_db_operation
+
+try:
+    from .base_db_class import BaseDBClass
+except ImportError:
+    try:
+        from base_db_class import BaseDBClass
+    except ImportError:
+        # Fallback for when running from different directory
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from classes.base_db_class import BaseDBClass
+
+class IndividualFeedbackSystem(BaseDBClass):
     def __init__(self, db_path="data/canary_protocol.db"):
-        self.db_path = db_path
-        # Ensure data directory exists
-        import os
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        self.init_individual_feedback_db()
+        super().__init__(db_path)
 
-    def init_individual_feedback_db(self):
+    def init_db(self):
         """Initialize individual article feedback tracking tables"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS individual_article_feedback (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                digest_date TEXT,
-                article_url TEXT,
-                article_title TEXT,
-                article_source TEXT,
-                user_urgency_rating INTEGER,
-                ai_overall_urgency INTEGER,
-                feedback_type TEXT,
-                comments TEXT,
-                feedback_date TEXT,
-                FOREIGN KEY (digest_date) REFERENCES weekly_digests(date)
-            )
-        ''')
-
-        conn.commit()
-        conn.close()
+        def create_tables(cursor):
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS individual_article_feedback (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    digest_date TEXT,
+                    article_url TEXT,
+                    article_title TEXT,
+                    article_summary TEXT,
+                    ai_urgency_rating INTEGER,
+                    user_urgency_rating INTEGER,
+                    feedback_type TEXT,
+                    feedback_notes TEXT,
+                    timestamp TEXT
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_individual_feedback_date 
+                ON individual_article_feedback(digest_date)
+            ''')
+            
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_individual_feedback_rating 
+                ON individual_article_feedback(user_urgency_rating)
+            ''')
+        
+        safe_db_operation(self.db_path, create_tables)
 
     def collect_individual_feedback(self, digest_date=None):
         """Collect feedback on individual articles from a digest"""
@@ -53,22 +75,49 @@ class IndividualFeedbackSystem:
         print("=" * 60)
 
         # Get the digest and its articles
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            SELECT urgency_score, top_headlines
-            FROM weekly_digests
-            WHERE date LIKE ?
-            ORDER BY date DESC LIMIT 1
-        ''', (f'{digest_date}%',))
-
-        result = cursor.fetchone()
+        def get_digest_articles(cursor):
+            # Try exact date match first
+            cursor.execute('''
+                SELECT top_headlines FROM weekly_digests 
+                WHERE date = ? 
+                ORDER BY date DESC LIMIT 1
+            ''', (digest_date,))
+            result = cursor.fetchone()
+            
+            # If no exact match, try date pattern matching for timestamps
+            if not result:
+                cursor.execute('''
+                    SELECT top_headlines FROM weekly_digests 
+                    WHERE date LIKE ? 
+                    ORDER BY date DESC LIMIT 1
+                ''', (f'{digest_date}%',))
+                result = cursor.fetchone()
+            
+            # If still no match, try alternative date formats
+            if not result:
+                # Try "Month DD, YYYY" format
+                from datetime import datetime
+                try:
+                    parsed_date = datetime.strptime(digest_date, '%Y-%m-%d')
+                    alt_format = parsed_date.strftime('%B %d, %Y')
+                    cursor.execute('''
+                        SELECT top_headlines FROM weekly_digests 
+                        WHERE date = ? 
+                        ORDER BY date DESC LIMIT 1
+                    ''', (alt_format,))
+                    result = cursor.fetchone()
+                except ValueError:
+                    pass
+            
+            return result
+        
+        result = safe_db_operation(self.db_path, get_digest_articles)
+        
         if not result:
             print("❌ No digest found for that date")
             return
 
-        ai_overall_urgency, headlines_json = result
+        headlines_json = result[0]
 
         if not headlines_json:
             print("❌ No individual headlines found for this digest")
@@ -81,13 +130,17 @@ class IndividualFeedbackSystem:
             return
 
         # Check which articles have already been rated
-        cursor.execute('''
-            SELECT article_url, user_urgency_rating FROM individual_article_feedback
-            WHERE digest_date LIKE ?
-        ''', (f'{digest_date}%',))
+        def get_rated_articles(cursor):
+            cursor.execute('''
+                SELECT article_url, user_urgency_rating FROM individual_article_feedback
+                WHERE digest_date LIKE ?
+            ''', (f'{digest_date}%',))
+            return cursor.fetchall()
+        
+        rated_results = safe_db_operation(self.db_path, get_rated_articles) or []
 
         already_processed = {}
-        for url, rating in cursor.fetchall():
+        for url, rating in rated_results:
             already_processed[url] = rating
 
         # Filter out already-processed articles
@@ -110,15 +163,20 @@ class IndividualFeedbackSystem:
             print(f"📈 Total training data: {len(already_processed)} articles")
             print(f"💡 Run './canary feedback-summary' to see your ratings.")
 
-            # Offer to show previously rated articles
-            show_rated = input(
-                "\n🔍 Would you like to see your previous ratings for this digest? (y/n): ").strip().lower()
-            if show_rated in ['y', 'yes']:
-                self._show_previous_ratings(digest_date, cursor)
-
-            conn.close()
+            # Offer to show previously rated articles (only in interactive mode)
+            try:
+                show_rated = input(
+                    "\n🔍 Would you like to see your previous ratings for this digest? (y/n): ").strip().lower()
+                if show_rated in ['y', 'yes']:
+                    self._show_previous_ratings(digest_date)
+            except EOFError:
+                # Non-interactive mode, skip the prompt
+                pass
             return
 
+        # Get AI overall urgency from the digest (default to 5 if not found)
+        ai_overall_urgency = 5  # Default value
+        
         print(f"🤖 AI's Overall Digest Urgency: {ai_overall_urgency}/10")
         print(
             f"📰 Found {
@@ -156,16 +214,19 @@ class IndividualFeedbackSystem:
                         return
                     elif response == 's':
                         # Store skipped article as "irrelevant" training data
-                        cursor.execute('''
-                            INSERT INTO individual_article_feedback
-                            (digest_date, article_url, article_title, article_source,
-                             user_urgency_rating, ai_overall_urgency, feedback_type,
-                             comments, feedback_date)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (digest_date, url, title, source, -1,
-                              ai_overall_urgency, "irrelevant",
-                              "User marked as irrelevant to urgency assessment",
-                              datetime.now().isoformat()))
+                        def store_irrelevant(cursor):
+                            cursor.execute('''
+                                INSERT INTO individual_article_feedback
+                                (digest_date, article_url, article_title, article_source,
+                                 user_urgency_rating, ai_overall_urgency, feedback_type,
+                                 comments, feedback_date)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ''', (digest_date, url, title, source, -1,
+                                  ai_overall_urgency, "irrelevant",
+                                  "User marked as irrelevant to urgency assessment",
+                                  datetime.now().isoformat()))
+                        
+                        safe_db_operation(self.db_path, store_irrelevant)
 
                         skipped_count += 1
                         print("⏭️  Marked as irrelevant (valuable training data!)")
@@ -182,15 +243,18 @@ class IndividualFeedbackSystem:
                             user_urgency, ai_overall_urgency)
 
                         # Store feedback
-                        cursor.execute('''
-                            INSERT INTO individual_article_feedback
-                            (digest_date, article_url, article_title, article_source,
-                             user_urgency_rating, ai_overall_urgency, feedback_type,
-                             comments, feedback_date)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (digest_date, url, title, source, user_urgency,
-                              ai_overall_urgency, feedback_type, comments,
-                              datetime.now().isoformat()))
+                        def store_feedback(cursor):
+                            cursor.execute('''
+                                INSERT INTO individual_article_feedback
+                                (digest_date, article_url, article_title, article_source,
+                                 user_urgency_rating, ai_overall_urgency, feedback_type,
+                                 comments, feedback_date)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ''', (digest_date, url, title, source, user_urgency,
+                                  ai_overall_urgency, feedback_type, comments,
+                                  datetime.now().isoformat()))
+                        
+                        safe_db_operation(self.db_path, store_feedback)
 
                         rated_count += 1
                         print(f"✅ Rating saved for this article")
@@ -200,9 +264,6 @@ class IndividualFeedbackSystem:
                 except ValueError:
                     print(
                         "Please enter a valid number, 's' for irrelevant, or 'q' to quit")
-
-        conn.commit()
-        conn.close()
 
         print(f"\n🎉 Feedback session complete!")
         print(f"✅ Rated: {rated_count} articles")
@@ -216,7 +277,7 @@ class IndividualFeedbackSystem:
         if rated_count > 0 or skipped_count > 0:
             print(f"\n🚀 Training AI with your individual article feedback...")
             try:
-                from adaptive_intelligence import CanaryIntelligence
+                from .adaptive_intelligence import CanaryIntelligence
                 intelligence = CanaryIntelligence()
                 intelligence.learn_from_individual_articles(digest_date)
             except Exception as e:
@@ -257,7 +318,6 @@ class IndividualFeedbackSystem:
         else:
             # Extract domain
             try:
-                from urllib.parse import urlparse
                 domain = urlparse(url).netloc
                 return domain.replace('www.', '').title()
             except BaseException:

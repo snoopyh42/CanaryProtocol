@@ -33,7 +33,7 @@ class XMonitor:
                 os.path.dirname(
                     os.path.dirname(
                         os.path.abspath(__file__))))
-            from config_loader import get_config, get_setting
+            from .config_loader import get_config, get_setting
             self.config = get_config()
             self.social_config = get_setting('monitoring.social_media', {})
             self.config_enabled = True

@@ -10,13 +10,15 @@ NC='\033[0m' # No Color
 
 # Get the absolute path of the Canary Protocol directory
 get_canary_root() {
-    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    echo "$(dirname "$script_dir")"
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    dirname "$script_dir"
 }
 
 # Initialize environment variables
 init_environment() {
-    export CANARY_ROOT="$(get_canary_root)"
+    CANARY_ROOT="$(get_canary_root)"
+    export CANARY_ROOT
     export CANARY_CORE="$CANARY_ROOT/core"
     export CANARY_LOGS="$CANARY_ROOT/logs"
     export CANARY_DATA="$CANARY_ROOT/data"
@@ -48,6 +50,10 @@ log_warning() {
     echo -e "${YELLOW}[WARNING]${NC} $(date '+%Y-%m-%d %H:%M:%S'): $1" | tee -a "$log_file"
 }
 
+log_warn() {
+    log_warning "$@"
+}
+
 log_debug() {
     if [[ "${DEBUG:-}" == "true" ]]; then
         local log_file="${CANARY_ROOT}/logs/script.log"
@@ -63,7 +69,8 @@ check_python() {
         return 1
     fi
     
-    local python_version=$(python3 --version 2>&1 | cut -d' ' -f2)
+    local python_version
+    python_version=$(python3 --version 2>&1 | cut -d' ' -f2)
     log_info "Using Python $python_version"
     return 0
 }
@@ -77,10 +84,17 @@ setup_python_env() {
     }
     
     # Check if virtual environment exists and activate it
-    if [[ -d "venv" ]]; then
-        log_debug "Activating virtual environment"
+    if [[ -d ".venv" ]]; then
+        log_debug "Activating virtual environment (.venv)"
+        # shellcheck source=/dev/null
+        source .venv/bin/activate || {
+            log_warn "Failed to activate .venv virtual environment, proceeding without it"
+        }
+    elif [[ -d "venv" ]]; then
+        log_debug "Activating virtual environment (venv)"
+        # shellcheck source=/dev/null
         source venv/bin/activate || {
-            log_warn "Failed to activate virtual environment, proceeding without it"
+            log_warn "Failed to activate venv virtual environment, proceeding without it"
         }
     else
         log_debug "No virtual environment found, using system Python"
@@ -151,7 +165,8 @@ create_lock() {
     local lock_file="${CANARY_ROOT}/locks/${lock_name}.lock"
     
     if [[ -f "$lock_file" ]]; then
-        local lock_pid=$(cat "$lock_file")
+        local lock_pid
+        lock_pid=$(cat "$lock_file")
         if kill -0 "$lock_pid" 2>/dev/null; then
             log_error "Another instance is already running (PID: $lock_pid)"
             return 1
@@ -186,7 +201,8 @@ get_config_value() {
     local default_value="$2"
     
     # Try to get value from environment first
-    local env_key="CANARY_$(echo "$key" | tr '[:lower:]' '[:upper:]' | tr '.' '_')"
+    local env_key
+    env_key="CANARY_$(echo "$key" | tr '[:lower:]' '[:upper:]' | tr '.' '_')"
     if [[ -n "${!env_key}" ]]; then
         echo "${!env_key}"
         return 0
@@ -194,15 +210,14 @@ get_config_value() {
     
     # Try to get from Python config if available
     if [[ -f "$CANARY_CORE/config_loader.py" ]]; then
-        local value=$(python3 -c "
+        local value
+        value=$(python3 -c "
 import sys
-sys.path.append('$CANARY_CORE')
-try:
-    from config_loader import get_setting
-    print(get_setting('$key', '$default_value'))
-except:
-    print('$default_value')
-" 2>/dev/null)
+sys.path.append('core')
+from config_loader import ConfigLoader
+config = ConfigLoader()
+print(config._config.get('$key', '$default_value'))
+")
         echo "$value"
         return 0
     fi
@@ -213,8 +228,10 @@ except:
 
 # Validate email configuration
 check_email_config() {
-    local gmail_user=$(get_config_value "email.gmail_user" "")
-    local gmail_password=$(get_config_value "email.gmail_password" "")
+    local gmail_user
+    local gmail_password
+    gmail_user=$(get_config_value "email.gmail_user" "")
+    gmail_password=$(get_config_value "email.gmail_password" "")
     
     if [[ -z "$gmail_user" || -z "$gmail_password" ]]; then
         log_warn "Email configuration incomplete - notifications may not work"

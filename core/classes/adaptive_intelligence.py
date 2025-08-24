@@ -6,18 +6,36 @@ Implements machine learning and adaptive features for continuous improvement
 
 import sqlite3
 import json
-from datetime import datetime
 import os
+import re
+from datetime import datetime
+import sys
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-class CanaryIntelligence:
+try:
+    from functions.utils import ensure_directory_exists
+except ImportError:
+    # Fallback for when running from different directory
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'functions'))
+    from utils import ensure_directory_exists
+
+try:
+    from .base_db_class import BaseDBClass
+except ImportError:
+    try:
+        from base_db_class import BaseDBClass
+    except ImportError:
+        # Fallback for when running from different directory
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from classes.base_db_class import BaseDBClass
+
+class AdaptiveIntelligence(BaseDBClass):
     def __init__(self, db_path="data/canary_protocol.db"):
-        self.db_path = db_path
-        # Ensure data directory exists
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        self.init_intelligence_db()
+        super().__init__(db_path)
 
-    def init_intelligence_db(self):
+    def init_db(self):
         """Initialize tables for storing learning data"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -437,24 +455,16 @@ class CanaryIntelligence:
 
         # Apply learned keyword weights (prioritize article-level learning)
         learned_weights = self.get_adaptive_urgency_weights()
-        headline_text = ' '.join([h.get('title', '')
-                                 for h in headlines]).lower()
-
+        headline_text = ' '.join([h.get('title', '') for h in headlines])
+        
+        # Get individual article pattern boost (highest priority)
+        article_pattern_boost = self._get_individual_article_pattern_boost(headline_text)
+        
+        # Calculate urgency boost from learned weights
         urgency_boost = 0
-        article_pattern_boost = 0
-
-        # Process each headline individually for more targeted analysis
-        for headline in headlines:
-            title = headline.get('title', '').lower()
-
-            # Check for individual article patterns (higher priority)
-            article_boost = self._get_individual_article_pattern_boost(title)
-            article_pattern_boost += article_boost
-
-            # Apply keyword weights
-            for keyword, weight in learned_weights.items():
-                if keyword in title:
-                    urgency_boost += weight * 0.1  # Scale the boost
+        for keyword, weight in learned_weights.items():
+            if keyword.lower() in headline_text.lower():
+                urgency_boost += weight
 
         # Historical digest-level pattern matching (lower priority)
         digest_pattern_boost = self._get_pattern_match_boost(
@@ -732,7 +742,7 @@ class CanaryIntelligence:
 
 def enhance_urgency_assessment():
     """Enhanced urgency assessment using machine learning"""
-    intelligence = CanaryIntelligence()
+    intelligence = AdaptiveIntelligence()
 
     def smart_assess_urgency(headlines, economic_data):
         return intelligence.predict_trend_urgency(headlines, economic_data)
@@ -742,5 +752,5 @@ def enhance_urgency_assessment():
 
 if __name__ == "__main__":
     # Test the intelligence system
-    intelligence = CanaryIntelligence()
+    intelligence = AdaptiveIntelligence()
     print(intelligence.get_intelligence_report())

@@ -6,19 +6,35 @@ Allows users to provide feedback to improve AI accuracy over time
 
 import sqlite3
 import json
-from datetime import datetime
+import os
+import sys
 import argparse
+from datetime import datetime
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-class FeedbackSystem:
+try:
+    from functions.utils import ensure_directory_exists
+except ImportError:
+    # Fallback for when running from different directory
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'functions'))
+    from utils import ensure_directory_exists
+
+try:
+    from .base_db_class import BaseDBClass
+except ImportError:
+    try:
+        from base_db_class import BaseDBClass
+    except ImportError:
+        # Fallback for when running from different directory
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from classes.base_db_class import BaseDBClass
+
+class FeedbackSystem(BaseDBClass):
     def __init__(self, db_path="data/canary_protocol.db"):
-        self.db_path = db_path
-        # Ensure data directory exists
-        import os
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        self.init_feedback_db()
+        super().__init__(db_path)
 
-    def init_feedback_db(self):
+    def init_db(self):
         """Initialize feedback tracking tables"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -89,8 +105,11 @@ class FeedbackSystem:
             print()
 
             # Ask if they want to see the digest again
-            show_digest = input(
-                "🔍 Would you like to see the digest summary again? (y/n): ").lower().strip()
+            try:
+                show_digest = input(
+                    "🔍 Would you like to see the digest summary again? (y/n): ").lower().strip()
+            except EOFError:
+                show_digest = "n"
             if show_digest == 'y':
                 cursor.execute('''
                     SELECT urgency_score, summary
@@ -166,7 +185,7 @@ class FeedbackSystem:
 
     def _update_intelligence_from_feedback(self, predicted, actual, comments):
         """Update AI intelligence based on user feedback"""
-        from adaptive_intelligence import CanaryIntelligence
+        from .adaptive_intelligence import CanaryIntelligence
 
         intelligence = CanaryIntelligence()
         conn = sqlite3.connect(intelligence.db_path)

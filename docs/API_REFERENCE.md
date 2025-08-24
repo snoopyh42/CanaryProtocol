@@ -56,14 +56,34 @@ Automated data lifecycle management and cleanup.
 - `cleanup_old_data()` - Remove archived data from database
 - `generate_archival_report()` - Archival statistics and reporting
 
-#### BackupVerification (`core/backup_verification.py`)
-Backup integrity testing and validation.
+#### BackupVerification (`core/classes/backup_verification.py`)
+SHA256-verified backup integrity testing and validation.
 
 **Key Functions:**
-- `verify_backup_integrity()` - SHA256 checksum validation
-- `test_backup_restoration()` - Restore to temporary database
-- `validate_backup_schema()` - Schema consistency checks
-- `generate_verification_report()` - Detailed verification results
+- `verify_backup_integrity(backup_file)` - SHA256 checksum validation for tar.gz archives
+- `list_available_backups()` - Enumerate backups with metadata
+- `get_backup_metadata(backup_file)` - Extract backup information
+- `verify_all_backups()` - Batch verification with success rate reporting
+- CLI interface: `./canary verify`
+
+#### DataRestore (`core/classes/data_restore.py`)
+Comprehensive backup restoration with safety features.
+
+**Key Functions:**
+- `restore_full_system(backup_file)` - Complete system restore from tar.gz bundles
+- `list_available_backups()` - Show backups with size, timestamp, type
+- `create_safety_backup()` - Pre-restore safety backup creation
+- `log_restore_operation()` - Restore history tracking
+- CLI integration: `./canary restore` with interactive prompts
+
+#### DailySilentCollector (`core/classes/daily_silent_collector.py`)
+Automated data collection with integrated backup creation.
+
+**Key Functions:**
+- `collect_daily_data()` - News and economic data collection + automatic backup
+- `create_daily_backup()` - SHA256-verified backup creation after data collection
+- `get_weekly_summary()` - Collection statistics and emergency trigger analysis
+- `should_trigger_emergency_analysis()` - Automated emergency detection
 
 ### SmartFeedback (`core/smart_feedback.py`)
 User feedback integration and learning system for digest-level feedback.
@@ -95,6 +115,28 @@ Initializes the complete smart system:
 - Installs all dependencies
 - Sets up configuration files
 - Configures automated scheduling
+- Initializes backup and restore systems
+
+### ./canary backup
+Creates SHA256-verified system backup:
+- Bundles database, configs, logs into tar.gz archive
+- Generates SHA256 checksum for integrity verification
+- Includes learning summary report
+- Automatic daily backup via silent collector
+
+### ./canary restore
+Interactive backup restoration:
+- Lists available backups with metadata
+- Safety backup creation before restore
+- Supports tar.gz bundles and legacy formats
+- Restore history logging and confirmation prompts
+
+### ./canary uninstall
+Complete system removal:
+- Remove cron jobs only
+- Remove system files but keep data
+- Complete removal including all data
+- Safety confirmations and cancellation options
 
 ### ./canary dashboard
 Opens the learning analytics dashboard:
@@ -145,6 +187,21 @@ System validation and testing:
 - Test email notifications
 - Validate learning systems
 
+### Comprehensive Testing
+**Enhanced Test Suites:**
+- `python3 tests/test_comprehensive.py` - Full system test suite (100% coverage)
+  - Core system tests (imports, database, configuration)
+  - Backup & restore system tests with SHA256 verification
+  - Learning system tests (adaptive intelligence, feedback)
+  - Data collection tests with mocked external APIs
+  - Integration tests and shell script validation
+  - Isolated test environments with automatic cleanup
+  
+- `python3 tests/test_all_functionality.py` - Basic functionality validation
+  - Module import verification
+  - Core function testing
+  - Configuration system validation
+
 ### ./canary status
 System health and status:
 - Learning system status
@@ -177,7 +234,12 @@ System configuration:
 ## Database Schema
 
 ### Main Database (`data/canary_protocol.db`)
-Unified database containing all system data:
+Unified SQLite database with consistent schema across all modules:
+
+**Backup & Restore Tables:**
+- `restore_history` - Backup restoration operations and timestamps
+- `backup_metadata` - Backup file information and verification status
+- `migration_history` - Applied database schema migrations
 
 **AI Learning Tables:**
 - `learning_patterns` - Headline patterns and urgency correlations (individual article feedback)
@@ -252,13 +314,22 @@ Unified database containing all system data:
 ## Security Features
 
 ### Data Protection
-- Local database storage
-- Encrypted API keys
-- Secure configuration
-- Privacy-focused design
+- Local database storage with SHA256 backup verification
+- Encrypted API keys in environment variables
+- Secure configuration with YAML validation
+- Privacy-focused design with no external data sharing
+- Automatic safety backups before restore operations
 
 ### Access Control
-- Environment-based secrets
-- Configuration validation
-- Secure log handling
-- Protected credentials
+- Environment-based secrets (.env file)
+- Configuration validation and error handling
+- Secure log handling with rotation
+- Protected credentials with fallback defaults
+- Test isolation with temporary environments
+
+### Backup Security
+- SHA256 checksum generation and verification
+- Bundled tar.gz archives for integrity
+- Automatic verification during daily collection
+- Restore safety backups before operations
+- Complete audit trail of backup/restore operations

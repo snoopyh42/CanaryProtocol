@@ -12,48 +12,60 @@ from dotenv import load_dotenv
 load_dotenv('config/.env')
 
 # Import utility modules - handle both relative and absolute imports
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 try:
-    from .utils import log_error, log_info, load_file_lines
-    from .analysis_engine import analyze_headlines_with_ai, calculate_urgency_score
-    from .email_utils import build_email_content, send_email
-    from .slack_utils import send_to_slack
-    from .database_utils import init_db, save_digest_to_db
-    from .social_media_utils import initialize_x_monitor, get_social_media_analysis, get_social_urgency_boost, format_social_media_section
-    from .config_loader import get_config, get_setting
+    from functions.utils import log_error, log_info, load_file_lines
+    from functions.database_utils import init_db, save_digest_to_db, get_recent_digests
+    from functions.email_utils import build_email_content, send_email
+    from functions.slack_utils import send_to_slack, build_slack_blocks
+    from functions.social_media_utils import initialize_x_monitor, get_social_media_analysis, get_social_urgency_boost, format_social_media_section
+    from functions.analysis_engine import analyze_headlines_with_ai, calculate_urgency_score
+    from functions.economic_monitor import get_market_indicators, get_crypto_indicators
+    from classes.config_loader import ConfigLoader
+    from classes.adaptive_intelligence import AdaptiveIntelligence
+    from classes.individual_feedback import IndividualFeedbackSystem
+    from classes.smart_feedback import FeedbackSystem
 except ImportError:
-    # Fallback for standalone execution
+    # Fallback for when running from different directory
+    sys.path.append(os.path.join(os.path.dirname(__file__), 'functions'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), 'classes'))
     from utils import log_error, log_info, load_file_lines
-    from analysis_engine import analyze_headlines_with_ai, calculate_urgency_score
+    from database_utils import init_db, save_digest_to_db, get_recent_digests
     from email_utils import build_email_content, send_email
-    from slack_utils import send_to_slack
-    from database_utils import init_db, save_digest_to_db
+    from slack_utils import send_to_slack, build_slack_blocks
     from social_media_utils import initialize_x_monitor, get_social_media_analysis, get_social_urgency_boost, format_social_media_section
-    from config_loader import get_config, get_setting
+    from analysis_engine import analyze_headlines_with_ai, calculate_urgency_score
+    from economic_monitor import get_market_indicators, get_crypto_indicators
+    from config_loader import ConfigLoader
+    from adaptive_intelligence import AdaptiveIntelligence
+    from individual_feedback import IndividualFeedbackSystem
+    from smart_feedback import FeedbackSystem
 
 # Load configuration
 try:
-    config = get_config()
+    config = ConfigLoader()
     CONFIG_ENABLED = True
     print("✅ YAML configuration loaded")
 except ImportError:
     CONFIG_ENABLED = False
     print("⚠️  YAML configuration not available, using defaults")
 
-# Import adaptive intelligence
-try:
-    from .adaptive_intelligence import CanaryIntelligence
-    ADAPTIVE_INTELLIGENCE_ENABLED = True
-except ImportError:
-    try:
-        from adaptive_intelligence import CanaryIntelligence
-        ADAPTIVE_INTELLIGENCE_ENABLED = True
-    except ImportError:
-        ADAPTIVE_INTELLIGENCE_ENABLED = False
-        print("⚠️  Adaptive intelligence module not found. Using basic urgency assessment.")
+# Adaptive intelligence already imported above
+ADAPTIVE_INTELLIGENCE_ENABLED = True
 
 # Economic data sources for monitoring instability
 # Get configuration values
 
+
+def get_setting(key: str, default=None):
+    """Get configuration setting with dot notation"""
+    if CONFIG_ENABLED:
+        return config.get(key, default)
+    else:
+        return default
 
 def get_economic_apis():
     """Get economic APIs from configuration"""
@@ -219,7 +231,7 @@ def assess_urgency(headlines_data: List[Dict[str, Any]], economic_data: Optional
 
     if ADAPTIVE_INTELLIGENCE_ENABLED:
         try:
-            intelligence = CanaryIntelligence()
+            intelligence = AdaptiveIntelligence()
             return intelligence.predict_trend_urgency(headlines_data, economic_data)
         except Exception as e:
             print(f"⚠️  Adaptive intelligence failed: {e}")
@@ -397,7 +409,7 @@ This would normally contain AI-generated analysis of current political and econo
     # Learn from this digest if adaptive intelligence is enabled
     if ADAPTIVE_INTELLIGENCE_ENABLED:
         try:
-            intelligence = CanaryIntelligence()
+            intelligence = AdaptiveIntelligence()
             digest_data = {
                 'urgency_score': urgency_score,
                 'summary': summary_text,

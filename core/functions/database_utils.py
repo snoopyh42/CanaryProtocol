@@ -262,3 +262,32 @@ def cleanup_old_data(days_to_keep: int = 90, db_path: str = "data/canary_protoco
     except Exception as e:
         log_error(f"Database cleanup error: {e}")
         return False
+
+
+def get_feedback_summary(days: int = 7, db_path: str = "data/canary_protocol.db") -> Dict[str, Any]:
+    """Get summary of user feedback over specified days"""
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get feedback counts by type
+        cursor.execute('''
+            SELECT feedback_type, COUNT(*) as count, AVG(rating) as avg_rating
+            FROM feedback 
+            WHERE digest_date >= date('now', '-{} days')
+            GROUP BY feedback_type
+        '''.format(days))
+        
+        feedback_data = {}
+        for row in cursor.fetchall():
+            feedback_data[row['feedback_type']] = {
+                'count': row['count'],
+                'avg_rating': row['avg_rating'] if row['avg_rating'] else 0
+            }
+        
+        conn.close()
+        return feedback_data
+    except Exception as e:
+        log_error(f"Error getting feedback summary: {e}")
+        return {}

@@ -25,7 +25,8 @@ main() {
     
     # Backup current crontab
     log_info "Backing up current crontab"
-    local backup_file="cron_backup_$(date +%Y%m%d_%H%M%S).txt"
+    local backup_file
+    backup_file="cron_backup_$(date +%Y%m%d_%H%M%S).txt"
     crontab -l > "$backup_file" 2>/dev/null || touch "$backup_file"
     log_debug "Crontab backed up to $backup_file"
     
@@ -33,9 +34,17 @@ main() {
     crontab -l > temp_cron 2>/dev/null || touch temp_cron
     
     # Count existing entries
-    local daily_count=$(grep -c "run_daily_collection.sh" temp_cron 2>/dev/null || echo "0")
-    local weekly_count=$(grep -c "run_weekly_intelligent_digest.sh" temp_cron 2>/dev/null || echo "0")
-    local comment_count=$(grep -c "Canary Protocol" temp_cron 2>/dev/null || echo "0")
+    local daily_count
+    local weekly_count
+    local comment_count
+    daily_count=$(grep -c "daily_silent_collector.py" temp_cron 2>/dev/null || echo "0")
+    weekly_count=$(grep -c "canary_protocol.py" temp_cron 2>/dev/null || echo "0")
+    comment_count=$(grep -c "# Canary Protocol" temp_cron 2>/dev/null || echo "0")
+    
+    # Ensure counts are single integers
+    daily_count=$(echo "$daily_count" | head -n1 | tr -d '\n')
+    weekly_count=$(echo "$weekly_count" | head -n1 | tr -d '\n')
+    comment_count=$(echo "$comment_count" | head -n1 | tr -d '\n')
     
     log_info "Found existing entries:"
     echo "   • Daily collection jobs: $daily_count"
@@ -49,8 +58,8 @@ main() {
         
         # Remove all Canary Protocol related entries
         grep -v "Canary Protocol" temp_cron > temp_cron_1 2>/dev/null || touch temp_cron_1
-        grep -v "run_daily_collection.sh" temp_cron_1 > temp_cron_2 2>/dev/null || touch temp_cron_2
-        grep -v "run_weekly_intelligent_digest.sh" temp_cron_2 > temp_cron_clean 2>/dev/null || touch temp_cron_clean
+        grep -v "daily_silent_collector.py" temp_cron_1 > temp_cron_2 2>/dev/null || touch temp_cron_2
+        grep -v "canary_protocol.py" temp_cron_2 > temp_cron_clean 2>/dev/null || touch temp_cron_clean
         
         # Install cleaned crontab
         crontab temp_cron_clean
@@ -63,16 +72,19 @@ main() {
     crontab -l > temp_cron_final 2>/dev/null || touch temp_cron_final
     
     # Add the two cron jobs with dynamic paths
-    echo "# Canary Protocol - Daily Silent Data Collection" >> temp_cron_final
-    echo "0 8 * * * $CANARY_ROOT/scripts/run_daily_collection.sh" >> temp_cron_final
-    echo "# Canary Protocol - Weekly Intelligent Digest" >> temp_cron_final
-    echo "0 9 * * 0 $CANARY_ROOT/scripts/run_weekly_intelligent_digest.sh" >> temp_cron_final
+    {
+        echo "# Canary Protocol - Daily Silent Data Collection"
+        echo "0 8 * * * cd $CANARY_ROOT && python3 core/classes/daily_silent_collector.py >> logs/canary_cron.log 2>&1"
+        echo ""
+        echo "# Canary Protocol - Weekly Intelligent Digest"
+        echo "0 9 * * 1 cd $CANARY_ROOT && python3 core/canary_protocol.py >> logs/canary_cron.log 2>&1"
+    } >> temp_cron_final
     
     # Install the final crontab
     if crontab temp_cron_final; then
         log_info "Fresh cron jobs installed successfully"
         echo "   • Daily collection: 8 AM every day"
-        echo "   • Weekly digest: 9 AM every Sunday"
+        echo "   • Weekly digest: 9 AM every Monday"
     else
         log_error "Failed to install cron jobs"
         exit 1

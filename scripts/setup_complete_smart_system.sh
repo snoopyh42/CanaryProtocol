@@ -14,7 +14,7 @@ echo ""
 # Check Python version
 echo "📋 Checking Python environment..."
 python3 --version
-if [ $? -ne 0 ]; then
+if ! python3 -c "import sqlite3; print('SQLite3 available')"; then
     echo "❌ Python 3 not found. Please install Python 3.8 or higher."
     exit 1
 fi
@@ -29,9 +29,10 @@ python3 -c "
 import sys
 import os
 sys.path.append('core')
+sys.path.append('core/classes')
 os.makedirs('data', exist_ok=True)
-from adaptive_intelligence import CanaryIntelligence
-intelligence = CanaryIntelligence('data/canary_protocol.db')
+from adaptive_intelligence import AdaptiveIntelligence
+intelligence = AdaptiveIntelligence('data/canary_protocol.db')
 print('✅ Adaptive intelligence database initialized in data/ directory')
 "
 
@@ -40,6 +41,7 @@ python3 -c "
 import sys
 import os
 sys.path.append('core')
+sys.path.append('core/classes')
 os.makedirs('data', exist_ok=True)
 from smart_feedback import FeedbackSystem
 feedback = FeedbackSystem('data/canary_protocol.db')
@@ -67,10 +69,10 @@ export PATH="/home/ahansen/CanaryProtocol/venv/bin:$PATH"
 echo "$(date): Starting daily collection" >> logs/daily_collection.log
 
 # Run the collector
-python3 core/daily_silent_collector.py >> logs/daily_collection.log 2>&1
+python3 core/classes/daily_silent_collector.py >> logs/daily_collection.log 2>&1
 
 # Check for emergency triggers
-if python3 core/daily_silent_collector.py --check-emergency | grep -q "EMERGENCY"; then
+if python3 core/classes/daily_silent_collector.py --check-emergency | grep -q "EMERGENCY"; then
     echo "$(date): Emergency trigger detected" >> logs/daily_collection.log
     # Optional: Send emergency notification
     # python3 core/canary_protocol.py --emergency >> logs/daily_collection.log 2>&1
@@ -94,7 +96,7 @@ echo "$(date): Starting weekly intelligent digest" >> logs/canary_cron.log
 
 # Show weekly data summary
 echo "$(date): Weekly data collection summary:" >> logs/canary_cron.log
-python3 core/daily_silent_collector.py --summary >> logs/canary_cron.log 2>&1
+python3 core/classes/daily_silent_collector.py --summary >> logs/canary_cron.log 2>&1
 
 # Run the full intelligent analysis
 python3 core/canary_protocol.py >> logs/canary_cron.log 2>&1
@@ -111,10 +113,10 @@ echo "🕒 Setting up cron jobs..."
 crontab -l > temp_cron 2>/dev/null || touch temp_cron
 
 # Check if cron jobs already exist
-DAILY_EXISTS=$(grep -c "run_daily_collection.sh" temp_cron 2>/dev/null || echo "0")
-WEEKLY_EXISTS=$(grep -c "run_weekly_intelligent_digest.sh" temp_cron 2>/dev/null || echo "0")
+DAILY_EXISTS=$(grep -c "daily_silent_collector.py" temp_cron 2>/dev/null || echo "0")
+WEEKLY_EXISTS=$(grep -c "canary_protocol.py" temp_cron 2>/dev/null || echo "0")
 
-if [ "$DAILY_EXISTS" -gt 0 ] && [ "$WEEKLY_EXISTS" -gt 0 ]; then
+if [ "$DAILY_EXISTS" -gt "0" ] && [ "$WEEKLY_EXISTS" -gt "0" ]; then
     echo "✅ Cron jobs already exist - skipping setup"
     echo "   • Daily collection: Already configured"
     echo "   • Weekly digest: Already configured"
@@ -124,22 +126,23 @@ else
     
     # Remove any existing Canary Protocol entries (clean duplicates)
     grep -v "Canary Protocol" temp_cron > temp_cron_clean 2>/dev/null || touch temp_cron_clean
-    grep -v "run_daily_collection.sh" temp_cron_clean > temp_cron_clean2 2>/dev/null || touch temp_cron_clean2
-    grep -v "run_weekly_intelligent_digest.sh" temp_cron_clean2 > temp_cron_final 2>/dev/null || touch temp_cron_final
+    grep -v "daily_silent_collector.py" temp_cron_clean > temp_cron_clean2 2>/dev/null || touch temp_cron_clean2
+    grep -v "canary_protocol.py" temp_cron_clean2 > temp_cron_final 2>/dev/null || touch temp_cron_final
     
     # Add daily collection (8 AM every day, silent)
-    echo "# Canary Protocol - Daily Silent Data Collection" >> temp_cron_final
-    echo "0 8 * * * /home/ahansen/CanaryProtocol/scripts/run_daily_collection.sh" >> temp_cron_final
-    
-    # Add weekly intelligent digest (Sunday 9 AM)
-    echo "# Canary Protocol - Weekly Intelligent Digest" >> temp_cron_final
-    echo "0 9 * * 0 /home/ahansen/CanaryProtocol/scripts/run_weekly_intelligent_digest.sh" >> temp_cron_final
+    {
+        echo "# Canary Protocol - Daily Silent Data Collection"
+        echo "0 8 * * * cd $CANARY_ROOT && python3 core/classes/daily_silent_collector.py >> logs/canary_cron.log 2>&1"
+        echo ""
+        echo "# Canary Protocol - Weekly Intelligent Digest"
+        echo "0 9 * * 1 cd $CANARY_ROOT && python3 core/canary_protocol.py >> logs/canary_cron.log 2>&1"
+    } >> temp_cron_final
     
     # Install the new crontab
     crontab temp_cron_final
     rm temp_cron temp_cron_clean temp_cron_clean2 temp_cron_final
     
-    echo "✅ Cron jobs installed:"
+    echo " Cron jobs installed:"
     echo "   • Daily collection: 8 AM every day (silent)"
     echo "   • Weekly digest: 9 AM every Sunday (with emails)"
 fi
@@ -162,7 +165,7 @@ export PATH="/home/ahansen/CanaryProtocol/venv/bin:$PATH"
 
 # Show recent emergency triggers
 echo "Recent emergency triggers:"
-python3 core/daily_silent_collector.py --check-emergency
+python3 core/classes/daily_silent_collector.py --check-emergency
 
 echo ""
 echo "Running immediate analysis..."
@@ -189,7 +192,7 @@ cd /home/ahansen/CanaryProtocol
 
 # Daily collection summary
 echo "📊 RECENT DATA COLLECTION:"
-python3 core/daily_silent_collector.py --summary
+python3 core/classes/daily_silent_collector.py --summary
 echo ""
 
 # Learning intelligence
@@ -204,7 +207,7 @@ echo ""
 
 # Recent emergency triggers
 echo "🚨 EMERGENCY TRIGGERS:"
-python3 core/daily_silent_collector.py --check-emergency
+python3 core/classes/daily_silent_collector.py --check-emergency
 echo ""
 
 # Recent logs
@@ -229,11 +232,11 @@ echo "=============================="
 # Show recent learning progress
 python3 -c "
 import sys
-sys.path.append('core')
-from adaptive_intelligence import CanaryIntelligence
+sys.path.append('core/classes')
+from adaptive_intelligence import AdaptiveIntelligence
 from smart_feedback import FeedbackSystem
 
-intelligence = CanaryIntelligence('data/canary_protocol.db')
+intelligence = AdaptiveIntelligence('data/canary_protocol.db')
 feedback = FeedbackSystem('data/canary_protocol.db')
 
 print(intelligence.get_intelligence_report())
@@ -268,11 +271,11 @@ cp -r logs "$BACKUP_DIR/logs_$DATE" 2>/dev/null || true
 # Create learning summary
 python3 -c "
 import sys
-sys.path.append('core')
-from adaptive_intelligence import CanaryIntelligence
+sys.path.append('core/classes')
+from adaptive_intelligence import AdaptiveIntelligence
 from smart_feedback import FeedbackSystem
 
-intelligence = CanaryIntelligence('data/canary_protocol.db')
+intelligence = AdaptiveIntelligence('data/canary_protocol.db')
 feedback = FeedbackSystem('data/canary_protocol.db')
 
 with open('$BACKUP_DIR/learning_summary_$DATE.txt', 'w') as f:
@@ -291,7 +294,7 @@ chmod +x scripts/backup_learning_data.sh
 # Test the system
 echo ""
 echo "🧪 Testing the smart system..."
-python3 core/daily_silent_collector.py --verbose
+python3 core/classes/daily_silent_collector.py --verbose
 
 echo ""
 echo "✅ COMPLETE SMART CANARY PROTOCOL SETUP FINISHED!"

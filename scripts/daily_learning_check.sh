@@ -7,11 +7,11 @@ echo "=============================="
 # Show recent learning progress
 python3 -c "
 import sys
-sys.path.append('core')
-from adaptive_intelligence import CanaryIntelligence
+sys.path.append('core/classes')
+from adaptive_intelligence import AdaptiveIntelligence
 from smart_feedback import FeedbackSystem
 
-intelligence = CanaryIntelligence('data/canary_protocol.db')
+intelligence = AdaptiveIntelligence('data/canary_protocol.db')
 feedback = FeedbackSystem('data/canary_protocol.db')
 
 print(intelligence.get_intelligence_report())

@@ -6,27 +6,45 @@ Collects data daily without analysis - feeds into weekly AI processing
 
 import sqlite3
 import json
-from datetime import datetime, timedelta
-import sys
 import os
-
-# Add the current directory to the path to import our modules
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
-# Simple data collection without complex imports
+import sys
+import time
+import random
 import feedparser
 import yfinance as yf
 import requests
+from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
-class SilentCollector:
-    def __init__(self, db_path="data/canary_protocol.db"):
-        self.db_path = db_path
-        # Ensure data directory exists
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        self.init_collector_db()
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../functions'))
 
-    def init_collector_db(self):
+try:
+    from functions.utils import ensure_directory_exists
+except ImportError:
+    # Fallback for when running from different directory
+    import sys
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'functions'))
+    from utils import ensure_directory_exists
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from .base_db_class import BaseDBClass
+except ImportError:
+    try:
+        from base_db_class import BaseDBClass
+    except ImportError:
+        # Fallback for when running from different directory
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from classes.base_db_class import BaseDBClass
+
+class SilentCollector(BaseDBClass):
+    def __init__(self, db_path="data/canary_protocol.db"):
+        super().__init__(db_path)
+
+    def init_db(self):
         """Initialize daily collection tables"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -94,16 +112,23 @@ class SilentCollector:
         emergency_level = self._check_emergency_triggers(
             headlines, economic_data, urgency_keywords)
 
+        collected_items = headline_count + len(economic_data)
+        max_emergency_level = emergency_level
+
         if verbose:
             print(f"   📰 Headlines: {headline_count}")
             print(f"   📈 Economic indicators: {len(economic_data)}")
             print(f"   🚨 Urgency keywords: {len(urgency_keywords)}")
-            print(f"   📊 VIX level: {vix_level}")
-            if emergency_level > 0:
-                print(
-                    f"   ⚠️  Emergency trigger detected: Level {emergency_level}")
+        # Log collection summary
+        self.log_daily_collection(collected_items, max_emergency_level)
 
-        return emergency_level
+        # Create daily backup after data collection
+        self.create_daily_backup(verbose)
+
+        if verbose:
+            print(f"✅ Daily collection complete: {collected_items} items, max emergency level: {max_emergency_level}")
+
+        return max_emergency_level
 
     def _fetch_simple_news(self) -> List[Dict[str, str]]:
         """Fetch news from a few key RSS feeds"""
@@ -379,6 +404,62 @@ class SilentCollector:
         conn.close()
 
         return high_triggers > 0
+
+    def create_daily_backup(self, verbose=False):
+        """Create automated daily backup"""
+        try:
+            import subprocess
+            import os
+            
+            # Change to project root directory
+            script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            
+            if verbose:
+                print("   💾 Creating daily backup...")
+            
+            # Run backup script
+            result = subprocess.run(
+                ['bash', 'scripts/backup_learning_data.sh'],
+                cwd=script_dir,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                if verbose:
+                    print("   ✅ Daily backup created successfully")
+                # Log backup creation
+                ensure_directory_exists('logs')
+                with open('logs/daily_collection.log', 'a') as f:
+                    f.write(f"{datetime.now().isoformat()}: Daily backup created successfully\n")
+            else:
+                if verbose:
+                    print(f"   ⚠️  Backup failed: {result.stderr}")
+                # Log backup failure
+                ensure_directory_exists('logs')
+                with open('logs/daily_collection.log', 'a') as f:
+                    f.write(f"{datetime.now().isoformat()}: Daily backup failed: {result.stderr}\n")
+                    
+        except Exception as e:
+            if verbose:
+                print(f"   ⚠️  Backup error: {e}")
+            # Log backup error
+            try:
+                ensure_directory_exists('logs')
+                with open('logs/daily_collection.log', 'a') as f:
+                    f.write(f"{datetime.now().isoformat()}: Daily backup error: {e}\n")
+            except:
+                pass
+
+    def log_daily_collection(self, items_collected: int, max_emergency_level: int):
+        """Log daily collection summary"""
+        try:
+            ensure_directory_exists('logs')
+            with open('logs/daily_collection.log', 'a') as f:
+                f.write(f"{datetime.now().isoformat()}: Collected {items_collected} items, "
+                       f"max emergency level: {max_emergency_level}\n")
+        except Exception as e:
+            print(f"Warning: Could not log daily collection: {e}")
 
 
 def main():

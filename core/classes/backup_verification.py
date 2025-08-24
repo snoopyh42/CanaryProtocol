@@ -14,12 +14,20 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 try:
-    from .utils import log_info, log_error, log_warning, safe_db_operation
-    from .config_loader import load_config
+    from functions.utils import log_info, log_error, log_warning, safe_db_operation
 except ImportError:
+    # Fallback for when running from different directory
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'functions'))
     from utils import log_info, log_error, log_warning, safe_db_operation
-    from config_loader import load_config
+try:
+    from .config_loader import ConfigLoader
+except ImportError:
+    from config_loader import ConfigLoader
 
 
 class BackupVerificationManager:
@@ -27,8 +35,9 @@ class BackupVerificationManager:
     
     def __init__(self, db_path: str = "data/canary_protocol.db", config_path: str = "config/config.yaml"):
         self.db_path = db_path
-        self.config = load_config(config_path)
-        self.backup_dir = Path("data/backups")
+        self.config_loader = ConfigLoader()
+        self.config = self.config_loader._config or {}
+        self.backup_dir = Path("backups")
         self.verification_dir = Path("data/verification")
         self.verification_dir.mkdir(exist_ok=True)
         
@@ -84,16 +93,15 @@ class BackupVerificationManager:
         return safe_db_operation(db_path, get_schema, default={})
     
     def verify_backup_integrity(self, backup_file: Path) -> Dict[str, Any]:
-        """Verify the integrity of a backup file"""
+        """Verify the integrity of a backup file using SHA256 checksum comparison"""
         verification_result = {
             "backup_file": str(backup_file),
             "verified_at": datetime.now().isoformat(),
             "file_exists": backup_file.exists(),
             "file_size_bytes": 0,
-            "checksum": "",
-            "database_readable": False,
-            "schema_valid": False,
-            "data_sample_valid": False,
+            "checksum_match": False,
+            "checksum_file_exists": False,
+            "overall_valid": False,
             "errors": []
         }
         
@@ -102,35 +110,173 @@ class BackupVerificationManager:
             return verification_result
         
         try:
-            # Check file size and checksum
+            # Check file size
             verification_result["file_size_bytes"] = backup_file.stat().st_size
-            verification_result["checksum"] = self.calculate_file_checksum(backup_file)
             
+            # Look for corresponding .sha256 file
+            sha256_file = backup_file.with_suffix(backup_file.suffix + '.sha256')
+            if backup_file.suffix == '.tar.gz':
+                # Handle .tar.gz.sha256 case
+                sha256_file = Path(str(backup_file).replace('.tar.gz', '.sha256'))
+            
+            verification_result["checksum_file_exists"] = sha256_file.exists()
+            
+            if sha256_file.exists():
+                # Read expected checksum
+                try:
+                    with open(sha256_file, 'r') as f:
+                        expected_checksum = f.read().strip().split()[0]  # First part is the hash
+                    
+                    # Calculate actual checksum
+                    actual_checksum = self.calculate_file_checksum(backup_file)
+                    
+                    verification_result["expected_checksum"] = expected_checksum
+                    verification_result["actual_checksum"] = actual_checksum
+                    verification_result["checksum_match"] = (expected_checksum == actual_checksum)
+                    
+                    if not verification_result["checksum_match"]:
+                        verification_result["errors"].append("SHA256 checksum mismatch - backup may be corrupted")
+                        
+                except Exception as e:
+                    verification_result["errors"].append(f"Failed to verify checksum: {e}")
+            else:
+                # Fallback to basic validation for files without checksums
+                if backup_file.suffix == '.tar.gz':
+                    verification_result.update(self._verify_tar_gz_basic(backup_file))
+                elif backup_file.suffix == '.db':
+                    verification_result.update(self._verify_db_backup(backup_file))
+                else:
+                    verification_result["checksum_match"] = backup_file.stat().st_size > 0
+            
+        except Exception as e:
+            verification_result["errors"].append(f"General verification error: {e}")
+        
+        verification_result["overall_valid"] = (
+            verification_result["file_exists"] and
+            (verification_result["checksum_match"] or not verification_result["checksum_file_exists"]) and
+            len(verification_result["errors"]) == 0
+        )
+        
+        return verification_result
+    
+    def _verify_tar_gz_basic(self, backup_file: Path) -> Dict[str, Any]:
+        """Basic verification for tar.gz files without checksum"""
+        result = {
+            "checksum_match": False,
+            "errors": []
+        }
+        
+        try:
+            import tarfile
+            # Just verify it's a valid archive
+            with tarfile.open(backup_file, 'r:gz') as tar:
+                members = tar.getnames()
+                # Look for database file in archive structure
+                db_found = any('canary_protocol.db' in member for member in members)
+                result["checksum_match"] = db_found
+                
+                if not db_found:
+                    result["errors"].append("Database file not found in archive")
+                    
+        except Exception as e:
+            result["errors"].append(f"Archive validation failed: {e}")
+        
+        return result
+    
+    def _verify_tar_gz_backup(self, backup_file: Path) -> Dict[str, Any]:
+        """Extract and verify tar.gz backup contents in temporary directory"""
+        result = {
+            "database_readable": False,
+            "schema_valid": False,
+            "data_sample_valid": False,
+            "errors": []
+        }
+        
+        temp_dir = None
+        try:
+            import tarfile
+            import tempfile
+            
+            # Create temporary directory for extraction
+            temp_dir = tempfile.mkdtemp(prefix="backup_verify_")
+            
+            # Extract archive to temp directory
+            with tarfile.open(backup_file, 'r:gz') as tar:
+                tar.extractall(temp_dir)
+                members = tar.getnames()
+                result["archive_members"] = len(members)
+            
+            # Find extracted database file
+            extracted_db = None
+            for root, dirs, files in os.walk(temp_dir):
+                for file in files:
+                    if file == 'canary_protocol.db':
+                        extracted_db = os.path.join(root, file)
+                        break
+                if extracted_db:
+                    break
+            
+            if not extracted_db:
+                result["errors"].append("Database file not found in archive")
+                return result
+            
+            # Validate extracted database
+            db_result = self._verify_db_backup(Path(extracted_db))
+            result.update({
+                "database_readable": db_result["database_readable"],
+                "schema_valid": db_result["schema_valid"], 
+                "data_sample_valid": db_result["data_sample_valid"]
+            })
+            if db_result["errors"]:
+                result["errors"].extend(db_result["errors"])
+            
+            # Verify other expected files exist
+            expected_files = ['backup_info.txt']
+            for root, dirs, files in os.walk(temp_dir):
+                for expected in expected_files:
+                    if expected in files:
+                        result[f"{expected}_found"] = True
+            
+        except Exception as e:
+            result["errors"].append(f"Archive extraction/verification failed: {e}")
+        finally:
+            # Clean up temporary directory
+            if temp_dir and os.path.exists(temp_dir):
+                import shutil
+                shutil.rmtree(temp_dir, ignore_errors=True)
+        
+        return result
+    
+    def _verify_db_backup(self, db_file: Path) -> Dict[str, Any]:
+        """Verify a direct database file"""
+        result = {
+            "database_readable": False,
+            "schema_valid": False,
+            "data_sample_valid": False,
+            "errors": []
+        }
+        
+        try:
             # Test database readability
-            try:
-                conn = sqlite3.connect(str(backup_file))
-                cursor = conn.cursor()
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-                tables = cursor.fetchall()
-                conn.close()
-                
-                verification_result["database_readable"] = True
-                verification_result["table_count"] = len(tables)
-                
-            except Exception as e:
-                verification_result["errors"].append(f"Database not readable: {e}")
-                return verification_result
+            conn = sqlite3.connect(str(db_file))
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = cursor.fetchall()
+            conn.close()
+            
+            result["database_readable"] = True
+            result["table_count"] = len(tables)
             
             # Verify schema
-            try:
-                backup_schema = self.get_database_schema(str(backup_file))
-                original_schema = self.get_database_schema(self.db_path)
-                
-                schema_matches = True
+            backup_schema = self.get_database_schema(str(db_file))
+            original_schema = self.get_database_schema(self.db_path)
+            
+            schema_matches = True
+            if original_schema and backup_schema:
                 for table_name, table_info in original_schema.items():
                     if table_name not in backup_schema:
                         schema_matches = False
-                        verification_result["errors"].append(f"Missing table in backup: {table_name}")
+                        result["errors"].append(f"Missing table in backup: {table_name}")
                     else:
                         # Compare column structure
                         backup_columns = {col["name"]: col for col in backup_schema[table_name]["columns"]}
@@ -138,38 +284,18 @@ class BackupVerificationManager:
                         
                         if backup_columns != original_columns:
                             schema_matches = False
-                            verification_result["errors"].append(f"Schema mismatch in table: {table_name}")
-                
-                verification_result["schema_valid"] = schema_matches
-                verification_result["schema_comparison"] = {
-                    "original_tables": len(original_schema),
-                    "backup_tables": len(backup_schema),
-                    "matching_tables": len(set(original_schema.keys()) & set(backup_schema.keys()))
-                }
-                
-            except Exception as e:
-                verification_result["errors"].append(f"Schema verification failed: {e}")
+                            result["errors"].append(f"Schema mismatch in table: {table_name}")
+            
+            result["schema_valid"] = schema_matches
             
             # Sample data verification
-            try:
-                sample_valid = self.verify_data_sample(str(backup_file))
-                verification_result["data_sample_valid"] = sample_valid
-                
-            except Exception as e:
-                verification_result["errors"].append(f"Data sample verification failed: {e}")
+            sample_valid = self.verify_data_sample(str(db_file))
+            result["data_sample_valid"] = sample_valid
             
         except Exception as e:
-            verification_result["errors"].append(f"General verification error: {e}")
+            result["errors"].append(f"Database verification failed: {e}")
         
-        verification_result["overall_valid"] = (
-            verification_result["file_exists"] and
-            verification_result["database_readable"] and
-            verification_result["schema_valid"] and
-            verification_result["data_sample_valid"] and
-            len(verification_result["errors"]) == 0
-        )
-        
-        return verification_result
+        return result
     
     def verify_data_sample(self, backup_db_path: str) -> bool:
         """Verify a sample of data from the backup"""
@@ -315,14 +441,28 @@ class BackupVerificationManager:
         
         if not self.backup_dir.exists():
             verification_report["error"] = "Backup directory does not exist"
+            verification_report["summary"] = {
+                "success_rate": 0,
+                "oldest_verified_backup": None,
+                "newest_verified_backup": None,
+                "total_backup_size_mb": 0
+            }
             return verification_report
         
-        # Find backup files
-        backup_files = list(self.backup_dir.glob("*.db")) + list(self.backup_dir.glob("*.sql"))
+        # Find backup files - include tar.gz archives
+        backup_files = (list(self.backup_dir.glob("*.db")) + 
+                       list(self.backup_dir.glob("*.sql")) + 
+                       list(self.backup_dir.glob("*.tar.gz")))
         verification_report["backups_found"] = len(backup_files)
         
         if not backup_files:
             verification_report["error"] = "No backup files found"
+            verification_report["summary"] = {
+                "success_rate": 0,
+                "oldest_verified_backup": None,
+                "newest_verified_backup": None,
+                "total_backup_size_mb": 0
+            }
             return verification_report
         
         # Filter backups by age
@@ -378,11 +518,12 @@ class BackupVerificationManager:
                 })
         
         # Generate summary
+        total_backups = len(recent_backups) if recent_backups else verification_report["backups_found"]
         verification_report["summary"] = {
-            "success_rate": (verification_report["backups_verified"] / len(recent_backups) * 100) if recent_backups else 0,
+            "success_rate": (verification_report["backups_verified"] / total_backups * 100) if total_backups > 0 else 0,
             "oldest_verified_backup": None,
             "newest_verified_backup": None,
-            "total_backup_size_mb": sum(b.stat().st_size for b in recent_backups) / (1024 * 1024)
+            "total_backup_size_mb": sum(b.stat().st_size for b in recent_backups) / (1024 * 1024) if recent_backups else 0
         }
         
         # Find oldest and newest verified backups

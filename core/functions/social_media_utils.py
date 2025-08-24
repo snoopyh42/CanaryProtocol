@@ -50,32 +50,41 @@ def get_social_media_analysis(x_monitor: Optional[Any] = None) -> Dict[str, Any]
         }
 
 
-def _format_social_analysis(trends: List[Dict[str, Any]], sentiment: Dict[str, Any]) -> str:
+def _format_social_analysis(trends, sentiment) -> str:
     """Format social media analysis for inclusion in digest"""
     if not trends and not sentiment:
         return "No significant social media trends detected."
     
     analysis_parts = []
     
-    # Add trending topics
+    # Handle trends - could be string or list
     if trends:
-        analysis_parts.append("**Trending Political Topics:**")
-        for i, trend in enumerate(trends[:3], 1):
-            topic = trend.get('topic', 'Unknown')
-            volume = trend.get('tweet_volume', 0)
-            analysis_parts.append(f"{i}. {topic} ({volume:,} mentions)")
+        if isinstance(trends, str):
+            analysis_parts.append(f"**Social Media Trends:**\n{trends}")
+        elif isinstance(trends, list):
+            analysis_parts.append("**Trending Political Topics:**")
+            for i, trend in enumerate(trends[:3], 1):
+                if isinstance(trend, dict):
+                    topic = trend.get('topic', 'Unknown')
+                    volume = trend.get('tweet_volume', 0)
+                    analysis_parts.append(f"{i}. {topic} ({volume:,} mentions)")
+                else:
+                    analysis_parts.append(f"{i}. {trend}")
     
-    # Add sentiment analysis
+    # Handle sentiment - could be string or dict
     if sentiment:
-        overall_sentiment = sentiment.get('overall', 'neutral')
-        confidence = sentiment.get('confidence', 0)
-        analysis_parts.append(f"\n**Overall Sentiment:** {overall_sentiment.title()} (confidence: {confidence:.1%})")
-        
-        # Add specific sentiment breakdowns if available
-        if 'categories' in sentiment:
-            for category, score in sentiment['categories'].items():
-                if score > 0.6:  # Only show significant sentiment
-                    analysis_parts.append(f"- {category.title()}: {score:.1%}")
+        if isinstance(sentiment, str):
+            analysis_parts.append(f"\n**Political Sentiment:** {sentiment}")
+        elif isinstance(sentiment, dict):
+            overall_sentiment = sentiment.get('overall', 'neutral')
+            confidence = sentiment.get('confidence', 0)
+            analysis_parts.append(f"\n**Overall Sentiment:** {overall_sentiment.title()} (confidence: {confidence:.1%})")
+            
+            # Add specific sentiment breakdowns if available
+            if 'categories' in sentiment:
+                for category, score in sentiment['categories'].items():
+                    if score > 0.6:  # Only show significant sentiment
+                        analysis_parts.append(f"- {category.title()}: {score:.1%}")
     
     return "\n".join(analysis_parts) if analysis_parts else "Social media analysis inconclusive."
 

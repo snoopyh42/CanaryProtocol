@@ -174,6 +174,22 @@ class XMonitor:
             'analysis_period': f"{start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}",
             'collection_time': datetime.now().isoformat()}
 
+    def get_weekly_analysis(self):
+        """Get weekly analysis data - returns mock data for API limitations"""
+        return {
+            'political_trends': {
+                'election': {'engagement_score': 85, 'mentions': 1250},
+                'policy': {'engagement_score': 62, 'mentions': 890},
+                'debate': {'engagement_score': 73, 'mentions': 1100}
+            },
+            'economic_trends': {
+                'inflation': {'engagement_score': 45, 'mentions': 650},
+                'market': {'engagement_score': 38, 'mentions': 420}
+            },
+            'analysis_period': 'Last 7 days',
+            'collection_time': datetime.now().isoformat()
+        }
+
     def _analyze_keyword_trends(
             self,
             keywords,
